@@ -11,7 +11,10 @@ class ChessBoard(tk.Frame):
         self.color1 = color1
         self.color2 = color2
         self.pieces = {}
-        
+        self.selected_piece = None
+        self.selected_position = None
+        self.drag_data = {"x": 0, "y": 0, "item": None}
+
         self.piece_images = {}
         self.load_pieces()
 
@@ -19,6 +22,9 @@ class ChessBoard(tk.Frame):
         self.canvas.pack(side="top", fill="both", expand=True)
 
         self.canvas.bind("<Configure>", self.refresh_board)
+        self.canvas.bind("<ButtonPress-1>", self.on_click)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_drop)
 
     def load_pieces(self):
         piece_names = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
@@ -26,7 +32,7 @@ class ChessBoard(tk.Frame):
         for color in colors:
             for piece in piece_names:
                 png_file = f'Pieces/{color}_{piece}.png'
-                image = Image.open(png_file)
+                image = Image.open(png_file).convert("RGBA")  # Ensure the image has an alpha channel
                 image = image.resize((self.size, self.size), Image.LANCZOS)
                 self.piece_images[f'{color}_{piece}'] = ImageTk.PhotoImage(image)
 
@@ -43,7 +49,7 @@ class ChessBoard(tk.Frame):
                 y2 = y1 + self.size
                 self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=color, tags="square")
                 color = self.color1 if color == self.color2 else self.color2
-        
+
         # Draw the row numbers
         for row in range(self.rows):
             y = offset_y + row * self.size + self.size / 2
@@ -60,7 +66,7 @@ class ChessBoard(tk.Frame):
             col, row = position
             x = offset_x + col * self.size
             y = offset_y + row * self.size
-            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece], tags="piece")
+            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece], tags=("piece", position))
 
     def refresh_board(self, event=None):
         '''Redraw the board, possibly in response to window being resized'''
@@ -71,11 +77,55 @@ class ChessBoard(tk.Frame):
         # Calculate offset to center the board
         offset_x = (canvas_width - self.columns * self.size) / 2
         offset_y = (canvas_height - self.rows * self.size) / 2
-        
+
         self.draw_board(offset_x, offset_y)
 
+    def on_click(self, event):
+        '''Begin drag of an object'''
+        # record the item and its location
+        col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
+        row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
+        position = (int(col), int(row))
+
+        if position in self.pieces:
+            self.selected_piece = self.pieces[position]
+            self.selected_position = position
+            self.drag_data["item"] = self.canvas.find_withtag("current")
+            self.drag_data["x"] = event.x
+            self.drag_data["y"] = event.y
+
+    def on_drag(self, event):
+        '''Handle dragging of an object'''
+        if self.drag_data["item"]:
+            # compute how much the mouse has moved
+            delta_x = event.x - self.drag_data["x"]
+            delta_y = event.y - self.drag_data["y"]
+            # move the object the appropriate amount
+            self.canvas.move(self.drag_data["item"], delta_x, delta_y)
+            # record the new position
+            self.drag_data["x"] = event.x
+            self.drag_data["y"] = event.y
+
+    def on_drop(self, event):
+        '''End drag of an object'''
+        if self.drag_data["item"]:
+            col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
+            row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
+            new_position = (int(col), int(row))
+            if self.selected_piece:
+                self.move_piece(self.selected_position, new_position)
+                self.selected_piece = None
+                self.selected_position = None
+            # reset the drag data
+            self.drag_data = {"x": 0, "y": 0, "item": None}
+
+    def move_piece(self, from_pos, to_pos):
+        '''Move a piece from one position to another'''
+        if from_pos in self.pieces:
+            self.pieces[to_pos] = self.pieces.pop(from_pos)
+            self.refresh_board()
 
     def add_piece(self, piece, position):
         '''Add a piece to the board at the given position'''
         self.pieces[position] = piece
-        # self.refresh_board()
+        self.refresh_board()
