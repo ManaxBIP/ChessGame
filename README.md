@@ -33,7 +33,7 @@
     <img src="images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">EFORSAIR CRM DASHBOARD</h3>
+<h3 align="center">Chess Game</h3>
 
   <p align="center">
     A simple dashboard for managing statistics and data for EFORSAIR CRM
