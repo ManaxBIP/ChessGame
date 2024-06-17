@@ -36,7 +36,7 @@
 <h3 align="center">Chess Game</h3>
 
   <p align="center">
-    A simple dashboard for managing statistics and data for EFORSAIR CRM
+    A chess game
     <br />
     <br />
     <a href="https://github.com/github_username/repo_name">View Demo</a>
