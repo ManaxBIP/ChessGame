@@ -3,7 +3,6 @@ from PIL import Image, ImageTk
 
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
-        '''size is the size of a square, in pixels'''
         super().__init__(parent)
         self.rows = rows
         self.columns = columns
@@ -69,7 +68,6 @@ class ChessBoard(tk.Frame):
             self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece], tags=("piece", position))
 
     def refresh_board(self, event=None):
-        '''Redraw the board, possibly in response to window being resized'''
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
         self.size = min(int(canvas_width / (self.columns + 2)), int(canvas_height / (self.rows + 2)))
@@ -81,7 +79,6 @@ class ChessBoard(tk.Frame):
         self.draw_board(offset_x, offset_y)
 
     def on_click(self, event):
-        '''Begin drag of an object'''
         # record the item and its location
         col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
         row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
@@ -95,7 +92,6 @@ class ChessBoard(tk.Frame):
             self.drag_data["y"] = event.y
 
     def on_drag(self, event):
-        '''Handle dragging of an object'''
         if self.drag_data["item"]:
             # compute how much the mouse has moved
             delta_x = event.x - self.drag_data["x"]
@@ -107,7 +103,6 @@ class ChessBoard(tk.Frame):
             self.drag_data["y"] = event.y
 
     def on_drop(self, event):
-        '''End drag of an object'''
         if self.drag_data["item"]:
             col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
             row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
@@ -120,12 +115,10 @@ class ChessBoard(tk.Frame):
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
     def move_piece(self, from_pos, to_pos):
-        '''Move a piece from one position to another'''
         if from_pos in self.pieces:
             self.pieces[to_pos] = self.pieces.pop(from_pos)
             self.refresh_board()
 
     def add_piece(self, piece, position):
-        '''Add a piece to the board at the given position'''
         self.pieces[position] = piece
         self.refresh_board()
