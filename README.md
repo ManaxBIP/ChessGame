@@ -29,8 +29,8 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/github_username/repo_name">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+  <a href="https://github.com/ManaxBIP/ChessGame">
+    <img src="https://github.com/ManaxBIP/ChessGame/assets/81246812/a0826585-97be-4440-80a2-e16ef14ffad4" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">Chess Game</h3>
@@ -238,7 +238,7 @@ Project Link: [https://github.com/github_username/repo_name](https://github.com/
 [issues-url]: https://github.com/ManaxBIP/ChessGame/issues
 [license-shield]: https://img.shields.io/github/license/ManaxBIP/ChessGame.svg?style=for-the-badge
 [license-url]: https://github.com/ManaxBIP/ChessGame/blob/master/LICENSE.txt
-[product-screenshot]: https://github.com/ManaxBIP/ChessGame/assets/81246812/a0826585-97be-4440-80a2-e16ef14ffad4
+[product-screenshot]:  https://github.com/ManaxBIP/ChessGame/blob/master/LICENSE.txt
 [Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
 [Next-url]: https://nextjs.org/
 [React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
