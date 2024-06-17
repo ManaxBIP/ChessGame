@@ -3,7 +3,6 @@
 
 # IntelliJ project files
 .idea
-.idea/*
 *.iml
 out
 gen
@@ -169,3 +168,4 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+!/.venv/
