@@ -87,7 +87,8 @@ class ChessBoard(tk.Frame):
         if position in self.pieces:
             self.selected_piece = self.pieces[position]
             self.selected_position = position
-            self.drag_data["item"] = self.canvas.find_withtag("current")
+            # self.drag_data["item"] = self.canvas.find_withtag("current")
+            self.drag_data["item"] = self.canvas.find_withtag("piece")
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
 
@@ -108,9 +109,13 @@ class ChessBoard(tk.Frame):
             row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
             new_position = (int(col), int(row))
             if self.selected_piece:
+                if (new_position[0] < 0 or new_position[0] >= self.columns or
+                        new_position[1] < 0 or new_position[1] >= self.rows):
+                    new_position = self.selected_position
                 self.move_piece(self.selected_position, new_position)
                 self.selected_piece = None
                 self.selected_position = None
+
             # reset the drag data
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
