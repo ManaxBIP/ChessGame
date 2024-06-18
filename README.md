@@ -108,6 +108,12 @@ First install Tkinter.
   pip install tk
   ```
 
+After install Pillow.
+* Terminal
+  ```sh
+  pip install pillow
+  ```
+
 ## Run
 
 ```sh
