@@ -87,6 +87,7 @@ class ChessBoard(tk.Frame):
         if position in self.pieces:
             self.selected_piece = self.pieces[position]
             self.selected_position = position
+            print(self.Calculate_moves(self.selected_piece, self.selected_position))
             self.drag_data["item"] = self.canvas.find_withtag("current")
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
@@ -126,3 +127,108 @@ class ChessBoard(tk.Frame):
     def add_piece(self, piece, position):
         self.pieces[position] = piece
         self.refresh_board()
+
+    def Calculate_moves(self, piece, position):
+        piece_name = piece.split("_")[1]
+        positions_available = []
+        positions_available_valide = []
+        match piece_name:
+            case "king":
+                # Calculate moves for king
+                positions_available.append((position[0] + 1, position[1]))
+                positions_available.append((position[0] - 1, position[1]))
+                positions_available.append((position[0], position[1] + 1))
+                positions_available.append((position[0], position[1] - 1))
+                positions_available.append((position[0] + 1, position[1] + 1))
+                positions_available.append((position[0] - 1, position[1] + 1))
+                positions_available.append((position[0] + 1, position[1] - 1))
+                positions_available.append((position[0] - 1, position[1] - 1))
+                for pos in positions_available:
+                    if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
+                       continue
+                    else:
+                        positions_available_valide.append(pos)
+                pass
+            case "queen":
+                # Calculate moves for queen
+                for i in range(1, 8):
+                    positions_available.append((position[0] + i, position[1]))
+                    positions_available.append((position[0] - i, position[1]))
+                    positions_available.append((position[0], position[1] + i))
+                    positions_available.append((position[0], position[1] - i))
+                    positions_available.append((position[0] + i, position[1] + i))
+                    positions_available.append((position[0] - i, position[1] + i))
+                    positions_available.append((position[0] + i, position[1] - i))
+                    positions_available.append((position[0] - i, position[1] - i))
+                for pos in positions_available:
+                    if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
+                       continue
+                    else:
+                        positions_available_valide.append(pos)
+                pass
+            case "rook":
+                # Calculate moves for rook
+                for i in range(1, 8):
+                    positions_available.append((position[0] + i, position[1]))
+                    positions_available.append((position[0] - i, position[1]))
+                    positions_available.append((position[0], position[1] + i))
+                    positions_available.append((position[0], position[1] - i))
+                for pos in positions_available:
+                    if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
+                       continue
+                    else:
+                        positions_available_valide.append(pos)
+                pass
+            case "bishop":
+                # Calculate moves for bishop
+                for i in range(1, 8):
+                    positions_available.append((position[0] + i, position[1] + i))
+                    positions_available.append((position[0] - i, position[1] + i))
+                    positions_available.append((position[0] + i, position[1] - i))
+                    positions_available.append((position[0] - i, position[1] - i))
+                for pos in positions_available:
+                    if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
+                       continue
+                    else:
+                        positions_available_valide.append(pos)
+                positions_available = positions_available_valide
+                pass
+            case "knight":
+                # Calculate moves for knight
+                positions_available.append((position[0] + 1, position[1] + 2))
+                positions_available.append((position[0] - 1, position[1] + 2))
+                positions_available.append((position[0] + 1, position[1] - 2))
+                positions_available.append((position[0] - 1, position[1] - 2))
+                positions_available.append((position[0] + 2, position[1] + 1))
+                positions_available.append((position[0] - 2, position[1] + 1))
+                positions_available.append((position[0] + 2, position[1] - 1))
+                positions_available.append((position[0] - 2, position[1] - 1))
+                for pos in positions_available:
+                    if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
+                       continue
+                    else:
+                        positions_available_valide.append(pos)
+                pass
+            case "pawn":
+                # Calculate moves for pawn
+                if (position[1] == 6 and piece.split("_")[0] == "white") or (position[1] == 1 and piece.split("_")[0] == "black"):
+                    if (piece.split("_")[0] == "white"):
+                        positions_available.append((position[0], position[1] - 1))
+                        positions_available.append((position[0], position[1] - 2))
+                    else:
+                        positions_available.append((position[0], position[1] + 1))
+                        positions_available.append((position[0], position[1] + 2))
+                else:
+                    if (piece.split("_")[0] == "white"):
+                        positions_available.append((position[0], position[1] - 1))
+                    else:
+                        positions_available.append((position[0], position[1] + 1))
+                for pos in positions_available:
+                    if pos[0] < 0 or pos[0] > 7 or pos[1] < 0 or pos[1] > 7:
+                       continue
+                    else:
+                        positions_available_valide.append(pos)
+                pass
+            case _:
+                print("Invalid piece name")
+        return positions_available_valide

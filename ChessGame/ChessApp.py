@@ -19,25 +19,25 @@ class ChessApp(tk.Tk):
             page_name = F.__name__
             if F == ChessBoard:
                 frame = F(parent=self.container)  # ChessBoard n'a pas besoin de controller
-                frame.add_piece('white_king', (4, 0))
-                frame.add_piece('black_king', (4, 7))
-                frame.add_piece('white_queen', (3, 0))
-                frame.add_piece('black_queen', (3, 7))
-                frame.add_piece('white_rook', (0, 0))
-                frame.add_piece('white_rook', (7, 0))
-                frame.add_piece('black_rook', (0, 7))
-                frame.add_piece('black_rook', (7, 7))
-                frame.add_piece('white_bishop', (2, 0))
-                frame.add_piece('white_bishop', (5, 0))
-                frame.add_piece('black_bishop', (2, 7))
-                frame.add_piece('black_bishop', (5, 7))
-                frame.add_piece('white_knight', (1, 0))
-                frame.add_piece('white_knight', (6, 0))
-                frame.add_piece('black_knight', (1, 7))
-                frame.add_piece('black_knight', (6, 7))
+                frame.add_piece('white_king', (4, 7))
+                frame.add_piece('black_king', (4, 0))
+                frame.add_piece('white_queen', (3, 7))
+                frame.add_piece('black_queen', (3, 0))
+                frame.add_piece('white_rook', (0, 7))
+                frame.add_piece('white_rook', (7, 7))
+                frame.add_piece('black_rook', (0, 0))
+                frame.add_piece('black_rook', (7, 0))
+                frame.add_piece('white_bishop', (2, 7))
+                frame.add_piece('white_bishop', (5, 7))
+                frame.add_piece('black_bishop', (2, 0))
+                frame.add_piece('black_bishop', (5, 0))
+                frame.add_piece('white_knight', (1, 7))
+                frame.add_piece('white_knight', (6, 7))
+                frame.add_piece('black_knight', (1, 0))
+                frame.add_piece('black_knight', (6, 0))
                 for i in range(8):
-                    frame.add_piece('white_pawn', (i, 1))
-                    frame.add_piece('black_pawn', (i, 6))
+                    frame.add_piece('white_pawn', (i, 6))
+                    frame.add_piece('black_pawn', (i, 1))
                 
             else:
                 frame = F(parent=self.container, controller=self)  # MainMenu a besoin de controller
