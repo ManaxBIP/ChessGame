@@ -87,7 +87,6 @@ class ChessBoard(tk.Frame):
         if position in self.pieces:
             self.selected_piece = self.pieces[position]
             self.selected_position = position
-            
             self.drag_data["item"] = self.canvas.find_withtag("current")
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
