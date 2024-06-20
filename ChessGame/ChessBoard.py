@@ -156,4 +156,4 @@ class ChessBoard(tk.Frame):
             x1 = offset_x + col * self.size
             y1 = offset_y + row * self.size
             self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
-                                                                    outline="red", width=3)
+                                                                    outline="yellow", width=3)
