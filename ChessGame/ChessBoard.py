@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 
+
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -57,20 +58,17 @@ class ChessBoard(tk.Frame):
         letters = "abcdefgh"
         for col in range(self.columns):
             x = offset_x + col * self.size + self.size / 2
-            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col], tags="square")
+            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col],
+                                    tags="square")
 
         for position, piece in self.pieces.items():
             col, row = position
             x = offset_x + col * self.size
             y = offset_y + row * self.size
-            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece], tags=("piece", position))
+            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
+                                     tags=("piece", position))
 
-        # Redraw the selection rectangle if a piece is selected
-        if self.selected_piece and self.selected_position:
-            col, row = self.selected_position
-            x1 = offset_x + col * self.size
-            y1 = offset_y + row * self.size
-            self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size, outline="red", width=3)
+        self.update_selection_rectangle(offset_x, offset_y)
 
     def refresh_board(self, event=None):
         canvas_width = self.canvas.winfo_width()
@@ -97,17 +95,11 @@ class ChessBoard(tk.Frame):
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
 
-            # Draw selection rectangle
-            if self.selection_rectangle:
-                self.canvas.delete(self.selection_rectangle)
-            col, row = position
-            x1 = (self.canvas.winfo_width() - self.columns * self.size) / 2 + col * self.size
-            y1 = (self.canvas.winfo_height() - self.rows * self.size) / 2 + row * self.size
-            self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size, outline="red", width=3)
-
             print(f"Selected piece: {self.selected_piece} at {position}")
         else:
             self.click_movement(position)
+
+        self.update_selection_rectangle()
 
     def click_movement(self, new_position):
         if self.selected_piece:
@@ -116,13 +108,7 @@ class ChessBoard(tk.Frame):
                 new_position = self.selected_position
             self.move_piece(self.selected_position, new_position)
             self.selected_position = new_position
-            # Redraw the selection rectangle
-            if self.selection_rectangle:
-                self.canvas.delete(self.selection_rectangle)
-            col, row = new_position
-            x1 = (self.canvas.winfo_width() - self.columns * self.size) / 2 + col * self.size
-            y1 = (self.canvas.winfo_height() - self.rows * self.size) / 2 + row * self.size
-            self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size, outline="red", width=3)
+            self.update_selection_rectangle()
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -141,13 +127,7 @@ class ChessBoard(tk.Frame):
                     new_position = self.selected_position
                 self.move_piece(self.selected_position, new_position)
                 self.selected_position = new_position
-                # Redraw the selection rectangle
-                if self.selection_rectangle:
-                    self.canvas.delete(self.selection_rectangle)
-                col, row = new_position
-                x1 = (self.canvas.winfo_width() - self.columns * self.size) / 2 + col * self.size
-                y1 = (self.canvas.winfo_height() - self.rows * self.size) / 2 + row * self.size
-                self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size, outline="red", width=3)
+                self.update_selection_rectangle()
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
@@ -159,3 +139,17 @@ class ChessBoard(tk.Frame):
     def add_piece(self, piece, position):
         self.pieces[position] = piece
         self.refresh_board()
+
+    def update_selection_rectangle(self, offset_x=None, offset_y=None):
+        if self.selection_rectangle:
+            self.canvas.delete(self.selection_rectangle)
+        if self.selected_position:
+            if offset_x is None:
+                offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
+            if offset_y is None:
+                offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
+            col, row = self.selected_position
+            x1 = offset_x + col * self.size
+            y1 = offset_y + row * self.size
+            self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
+                                                                    outline="red", width=3)
