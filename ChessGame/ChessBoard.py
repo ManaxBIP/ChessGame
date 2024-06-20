@@ -1,7 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 
-
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -59,16 +58,14 @@ class ChessBoard(tk.Frame):
         letters = "abcdefgh"
         for col in range(self.columns):
             x = offset_x + col * self.size + self.size / 2
-            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col],
-                                    tags="square")
+            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col], tags="square")
 
         # Draw pieces
         for position, piece in self.pieces.items():
             col, row = position
             x = offset_x + col * self.size
             y = offset_y + row * self.size
-            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
-                                     tags=("piece", position))
+            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece], tags=("piece", position))
 
     def refresh_board(self, event=None):
         canvas_width = self.canvas.winfo_width()
@@ -80,6 +77,7 @@ class ChessBoard(tk.Frame):
         offset_y = (canvas_height - self.rows * self.size) / 2
 
         self.draw_board(offset_x, offset_y)
+
 
     def piece_location(self, event) -> tuple:
         # record the item and its location
@@ -93,8 +91,7 @@ class ChessBoard(tk.Frame):
         if position in self.pieces:
             self.selected_piece = self.pieces[position]
             self.selected_position = position
-            # self.drag_data["item"] = self.canvas.find_withtag("current")
-            self.drag_data["item"] = self.canvas.find_withtag("piece")
+            self.drag_data["item"] = self.canvas.find_withtag("current")
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
 
@@ -112,7 +109,6 @@ class ChessBoard(tk.Frame):
     def on_drop(self, event):
         if self.drag_data["item"]:
             new_position = self.piece_location(event)
-
             if self.selected_piece:
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
