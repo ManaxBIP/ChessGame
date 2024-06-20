@@ -89,13 +89,20 @@ class ChessBoard(tk.Frame):
         position = self.piece_location(event)
 
         if position in self.pieces:
-            self.selected_piece = self.pieces[position]
-            self.selected_position = position
-            self.drag_data["item"] = self.canvas.find_withtag("current")
-            self.drag_data["x"] = event.x
-            self.drag_data["y"] = event.y
+            if not self.selected_piece:
+                self.selected_piece = self.pieces[position]
+                self.selected_position = position
+                self.drag_data["item"] = self.canvas.find_withtag("current")
+                self.drag_data["x"] = event.x
+                self.drag_data["y"] = event.y
 
-            print(f"Selected piece: {self.selected_piece} at {position}")
+                print(f"Selected piece: {self.selected_piece} at {position}")
+            else:
+                self.click_movement(position)
+                # clear selection
+                self.selected_piece = None
+                # clear red outline
+                self.update_selection_rectangle()
         else:
             self.click_movement(position)
             # clear selection
@@ -135,10 +142,21 @@ class ChessBoard(tk.Frame):
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
+    # def move_piece(self, from_pos, to_pos):
+    #     if from_pos in self.pieces:
+    #         self.pieces[to_pos] = self.pieces.pop(from_pos)
+    #         self.refresh_board()
+
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
-            self.pieces[to_pos] = self.pieces.pop(from_pos)
+            piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
+            if to_pos in self.pieces:
+                del self.pieces[to_pos]  # Remove piece already at destination (if any)
+            self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
+
+            # Refresh the board to update the canvas
             self.refresh_board()
+
 
     def add_piece(self, piece, position):
         self.pieces[position] = piece
