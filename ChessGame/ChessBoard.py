@@ -126,10 +126,18 @@ class ChessBoard(tk.Frame):
     def add_piece(self, piece, position):
         self.pieces[position] = piece
         self.refresh_board()
+
     
-    def isObstacleInWay(calculateMoves: list, destination: tuple) -> bool:
-        for move in calculateMoves:
-            if move == destination:
-                return True
-        return False
+    
+    def isObstacleInWay(self, calculateMoves: list, destination: tuple) -> bool:
+        if destination in calculateMoves:
+            if destination in self.pieces:
+                selected_piece_color = self.selected_piece.split('_')[0]
+                destination_piece_color = self.pieces[destination].split('_')[0]
+                return selected_piece_color != destination_piece_color
+            else:
+                return False
+        else:
+            return True
+
 
