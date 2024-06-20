@@ -98,6 +98,10 @@ class ChessBoard(tk.Frame):
             print(f"Selected piece: {self.selected_piece} at {position}")
         else:
             self.click_movement(position)
+            # clear selection
+            self.selected_piece = None
+            #clear red outline
+
 
         self.update_selection_rectangle()
 
