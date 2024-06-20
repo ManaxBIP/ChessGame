@@ -121,7 +121,6 @@ class ChessBoard(tk.Frame):
             self.selected_position = None
             self.update_selection_rectangle()
 
-
     def on_drag(self, event):
         if self.drag_data["item"]:
             delta_x = event.x - self.drag_data["x"]
@@ -144,9 +143,7 @@ class ChessBoard(tk.Frame):
                     self.selected_position = None
                     self.selected_piece = None
 
-
                 self.update_selection_rectangle()
-
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
