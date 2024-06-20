@@ -109,7 +109,6 @@ class ChessBoard(tk.Frame):
             self.selected_piece = None
             #clear red outline
 
-
         self.update_selection_rectangle()
 
     def click_movement(self, new_position):
@@ -118,8 +117,10 @@ class ChessBoard(tk.Frame):
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
             self.move_piece(self.selected_position, new_position)
-            self.selected_position = new_position
+            print(f"Selected position: {self.selected_position}, {new_position}")
+            self.selected_position = None
             self.update_selection_rectangle()
+
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -137,8 +138,15 @@ class ChessBoard(tk.Frame):
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
                 self.move_piece(self.selected_position, new_position)
-                self.selected_position = new_position
+                if new_position == self.selected_position:
+                    self.selected_piece = new_position
+                else:
+                    self.selected_position = None
+                    self.selected_piece = None
+
+
                 self.update_selection_rectangle()
+
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
@@ -156,7 +164,6 @@ class ChessBoard(tk.Frame):
 
             # Refresh the board to update the canvas
             self.refresh_board()
-
 
     def add_piece(self, piece, position):
         self.pieces[position] = piece
