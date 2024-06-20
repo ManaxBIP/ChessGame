@@ -129,7 +129,6 @@ class ChessBoard(tk.Frame):
     
     def isObstacleInWay(calculateMoves: list, destination: tuple) -> bool:
         for move in calculateMoves:
-            print(type((0,1)))
             if move == destination:
                 return True
         return False
