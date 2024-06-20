@@ -126,7 +126,6 @@ class ChessBoard(tk.Frame):
     def add_piece(self, piece, position):
         self.pieces[position] = piece
         self.refresh_board()
-
     
     
     def isObstacleInWay(self, calculateMoves: list, destination: tuple) -> bool:
