@@ -87,7 +87,7 @@ class ChessBoard(tk.Frame):
         if position in self.pieces:
             self.selected_piece = self.pieces[position]
             self.selected_position = position
-            print(self.Calculate_moves(self.selected_piece, self.selected_position))
+            print(self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position)))
             self.drag_data["item"] = self.canvas.find_withtag("current")
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
@@ -112,7 +112,6 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                print(self.isObstacleInWay(self.Calculate_moves(self.selected_piece, self.selected_position), new_position))
                 self.move_piece(self.selected_position, new_position)
                 self.selected_piece = None
                 self.selected_position = None
@@ -129,85 +128,76 @@ class ChessBoard(tk.Frame):
         self.pieces[position] = piece
     
     
-    def isObstacleInWay(self, calculateMoves: list, destination: tuple) -> bool:
+    def validMoves(self, calculateMoves: list) -> list:
+        valid_moves = []
         piece_name = self.selected_piece.split("_")[1]
+        
         match piece_name:
             case "knight":
-                if destination in self.pieces:
-                    return True
-                return False
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        valid_moves.append(move)
+                        
             case "pawn":
                 for pos in calculateMoves:
                     if len(calculateMoves) == 1:
-                        if destination in self.pieces:
-                            return True
-                        return False
+                        if pos not in self.pieces:
+                            valid_moves.append(pos)
                     else:
-                        if destination == pos and pos == calculateMoves[0]:
-                            if destination in self.pieces:
-                                return True
-                            return False
-                        elif destination == pos and pos == calculateMoves[1]:
-                            if calculateMoves[0] in self.pieces:
-                                return True
-                            return False
-                return False
-            
+                        if pos == calculateMoves[0] and pos not in self.pieces:
+                            valid_moves.append(pos)
+                        elif pos == calculateMoves[1] and calculateMoves[0] not in self.pieces:
+                            valid_moves.append(pos)
+                        
             case "rook":
-                if destination in self.pieces:
-                    return True
-                if destination[0] == self.selected_position[0]:  # Vertical move
-                    step = 1 if destination[1] > self.selected_position[1] else -1
-                    for y in range(self.selected_position[1] + step, destination[1], step):
-                        if (destination[0], y) in self.pieces:
-                            return True
-                elif destination[1] == self.selected_position[1]:  # Horizontal move
-                    step = 1 if destination[0] > self.selected_position[0] else -1
-                    for x in range(self.selected_position[0] + step, destination[0], step):
-                        if (x, destination[1]) in self.pieces:
-                            return True
-                return False
-            
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        if move[0] == self.selected_position[0]:  # Vertical move
+                            step = 1 if move[1] > self.selected_position[1] else -1
+                            if all((move[0], y) not in self.pieces for y in range(self.selected_position[1] + step, move[1], step)):
+                                valid_moves.append(move)
+                        elif move[1] == self.selected_position[1]:  # Horizontal move
+                            step = 1 if move[0] > self.selected_position[0] else -1
+                            if all((x, move[1]) not in self.pieces for x in range(self.selected_position[0] + step, move[0], step)):
+                                valid_moves.append(move)
+                        
             case "bishop":
-                if destination in self.pieces:
-                    return True
-                step_x = 1 if destination[0] > self.selected_position[0] else -1
-                step_y = 1 if destination[1] > self.selected_position[1] else -1
-                for x, y in zip(range(self.selected_position[0] + step_x, destination[0], step_x),
-                                range(self.selected_position[1] + step_y, destination[1], step_y)):
-                    if (x, y) in self.pieces:
-                        return True
-                return False
-            
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        step_x = 1 if move[0] > self.selected_position[0] else -1
+                        step_y = 1 if move[1] > self.selected_position[1] else -1
+                        if all((x, y) not in self.pieces for x, y in zip(range(self.selected_position[0] + step_x, move[0], step_x), 
+                                                                        range(self.selected_position[1] + step_y, move[1], step_y))):
+                            valid_moves.append(move)
+                        
             case "queen":
-                if destination in self.pieces:
-                    return True
-                if destination[0] == self.selected_position[0]:  # Vertical move
-                    step = 1 if destination[1] > self.selected_position[1] else -1
-                    for y in range(self.selected_position[1] + step, destination[1], step):
-                        if (destination[0], y) in self.pieces:
-                            return True
-                elif destination[1] == self.selected_position[1]:  # Horizontal move
-                    step = 1 if destination[0] > self.selected_position[0] else -1
-                    for x in range(self.selected_position[0] + step, destination[0], step):
-                        if (x, destination[1]) in self.pieces:
-                            return True
-                else:  # Diagonal move
-                    step_x = 1 if destination[0] > self.selected_position[0] else -1
-                    step_y = 1 if destination[1] > self.selected_position[1] else -1
-                    for x, y in zip(range(self.selected_position[0] + step_x, destination[0], step_x),
-                                    range(self.selected_position[1] + step_y, destination[1], step_y)):
-                        if (x, y) in self.pieces:
-                            return True
-                return False
-            
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        if move[0] == self.selected_position[0]:  # Vertical move
+                            step = 1 if move[1] > self.selected_position[1] else -1
+                            if all((move[0], y) not in self.pieces for y in range(self.selected_position[1] + step, move[1], step)):
+                                valid_moves.append(move)
+                        elif move[1] == self.selected_position[1]:  # Horizontal move
+                            step = 1 if move[0] > self.selected_position[0] else -1
+                            if all((x, move[1]) not in self.pieces for x in range(self.selected_position[0] + step, move[0], step)):
+                                valid_moves.append(move)
+                        else:  # Diagonal move
+                            step_x = 1 if move[0] > self.selected_position[0] else -1
+                            step_y = 1 if move[1] > self.selected_position[1] else -1
+                            if all((x, y) not in self.pieces for x, y in zip(range(self.selected_position[0] + step_x, move[0], step_x),
+                                                                            range(self.selected_position[1] + step_y, move[1], step_y))):
+                                valid_moves.append(move)
+                        
             case "king":
-                if destination in self.pieces:
-                    return True
-                return False
-
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        valid_moves.append(move)
+                        
             case _:
                 print("Invalid piece name")
+        
+        return valid_moves
+
 
 
     def Calculate_moves(self, piece, position):
