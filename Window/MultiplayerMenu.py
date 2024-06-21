@@ -1,4 +1,7 @@
 import tkinter as tk
+import socket
+import threading
+from tkinter import messagebox
 
 class MultiplayerMenu(tk.Frame):
     def __init__(self, parent, controller):
@@ -18,12 +21,36 @@ class MultiplayerMenu(tk.Frame):
         self.back_button.pack(pady=20)
 
     def create_match(self):
-        # Logique pour démarrer un serveur
-        print("Create Match")
-    
+        self.server_thread = threading.Thread(target=self.start_server)
+        self.server_thread.start()
+        messagebox.showinfo("Server", "Server started. Waiting for players to join.")
+        # Optionally, navigate to the game screen
+        # self.controller.show_frame("ChessBoard")
+
     def join_match(self):
-        # Logique pour rejoindre un serveur
-        print("Join Match")
+        self.controller.show_frame("JoinMatch")
 
     def go_back(self):
         self.controller.show_frame("MainMenu")
+
+    def start_server(self):
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(("0.0.0.0", 5555))
+        server.listen(2)
+        print("Server started. Waiting for connections...")
+
+        while True:
+            client_socket, addr = server.accept()
+            print(f"Accepted connection from {addr}")
+            threading.Thread(target=self.handle_client, args=(client_socket,)).start()
+
+    def handle_client(self, client_socket):
+        while True:
+            try:
+                message = client_socket.recv(1024).decode()
+                if message:
+                    print(f"Received: {message}")
+                    # Handle the message and send response
+            except:
+                client_socket.close()
+                break

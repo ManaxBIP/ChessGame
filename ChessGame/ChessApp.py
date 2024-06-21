@@ -3,6 +3,7 @@ import tkinter as tk
 from ChessGame.ChessBoard import *
 from Window.MainMenu import MainMenu
 from Window.MultiplayerMenu import MultiplayerMenu
+from Window.JoinMatch import JoinMatch
 
 class ChessApp(tk.Tk):
     def __init__(self):
@@ -16,7 +17,7 @@ class ChessApp(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-        for F in (MainMenu, ChessBoard, MultiplayerMenu):
+        for F in (MainMenu, ChessBoard, MultiplayerMenu, JoinMatch):
             page_name = F.__name__
             if F == ChessBoard:
                 frame = F(parent=self.container)  # ChessBoard n'a pas besoin de controller
