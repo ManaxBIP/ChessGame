@@ -1,7 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 
-
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -15,6 +14,7 @@ class ChessBoard(tk.Frame):
         self.selected_position = None
         self.drag_data = {"x": 0, "y": 0, "item": None}
         self.selection_rectangle = None
+        self.calculated_moves = []
 
         self.piece_images = {}
         self.load_pieces()
@@ -40,6 +40,7 @@ class ChessBoard(tk.Frame):
     def draw_board(self, offset_x, offset_y):
         self.canvas.delete("square")
         self.canvas.delete("piece")
+        self.canvas.delete("move_indicator")
         color = self.color2
         for row in range(self.rows):
             color = self.color1 if color == self.color2 else self.color2
@@ -68,7 +69,16 @@ class ChessBoard(tk.Frame):
             self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
                                      tags=("piece", position))
 
+        self.draw_move_indicators(offset_x, offset_y)
         self.update_selection_rectangle(offset_x, offset_y)
+
+    def draw_move_indicators(self, offset_x, offset_y):
+        for move in self.calculated_moves:
+            col, row = move
+            x = offset_x + col * self.size + self.size / 2
+            y = offset_y + row * self.size + self.size / 2
+            radius = self.size // 8
+            self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="blue", tags="move_indicator")
 
     def refresh_board(self, event=None):
         canvas_width = self.canvas.winfo_width()
@@ -77,7 +87,7 @@ class ChessBoard(tk.Frame):
 
         offset_x = (canvas_width - self.columns * self.size) / 2
         offset_y = (canvas_height - self.rows * self.size) / 2
-
+        
         self.draw_board(offset_x, offset_y)
 
     def piece_location(self, event) -> tuple:
@@ -97,6 +107,7 @@ class ChessBoard(tk.Frame):
                 self.drag_data["y"] = event.y
 
                 print(f"Selected piece: {self.selected_piece} at {position}")
+                self.calculated_moves = self.Calculate_moves(self.selected_piece, self.selected_position)
             else:
                 self.click_movement(position)
                 # clear selection
@@ -129,6 +140,7 @@ class ChessBoard(tk.Frame):
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
 
+
     def on_drop(self, event):
         if self.drag_data["item"]:
             new_position = self.piece_location(event)
@@ -147,17 +159,14 @@ class ChessBoard(tk.Frame):
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
-    # def move_piece(self, from_pos, to_pos):
-    #     if from_pos in self.pieces:
-    #         self.pieces[to_pos] = self.pieces.pop(from_pos)
-    #         self.refresh_board()
-
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
-            piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
-            if to_pos in self.pieces:
-                del self.pieces[to_pos]  # Remove piece already at destination (if any)
-            self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
+            if (to_pos in self.calculated_moves):
+                piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
+                if to_pos in self.pieces:
+                    del self.pieces[to_pos]  # Remove piece already at destination (if any)
+                self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
+                self.calculated_moves = []
 
             # Refresh the board to update the canvas
             self.refresh_board()
@@ -169,6 +178,7 @@ class ChessBoard(tk.Frame):
     def update_selection_rectangle(self, offset_x=None, offset_y=None):
         if self.selection_rectangle:
             self.canvas.delete(self.selection_rectangle)
+            self.calculated_moves = []
         if self.selected_position:
             if offset_x is None:
                 offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
