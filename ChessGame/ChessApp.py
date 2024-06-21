@@ -7,7 +7,8 @@ class ChessApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("ChessGame")
-        self.geometry("700x700")
+        self.geometry("800x800")
+        self.minsize(800, 800)
 
         self.container = tk.Frame(self)
         self.container.pack(side="top", fill="both", expand=True)

@@ -20,7 +20,28 @@ class ChessBoard(tk.Frame):
         self.load_pieces()
 
         self.canvas = tk.Canvas(self)
-        self.canvas.pack(side="top", fill="both", expand=True)
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        self.sidebar = tk.Frame(self)
+        self.sidebar.pack(side="right", fill="y")
+        
+        self.white_captures_frame = tk.Frame(self.sidebar)
+        self.white_captures_frame.pack()
+        self.black_captures_frame = tk.Frame(self.sidebar)
+        self.black_captures_frame.pack()
+        
+        self.white_points = 0
+        self.black_points = 0
+        
+        self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
+        self.white_captures_label.pack()
+        self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
+        self.black_captures_label.pack()
+
+        self.white_points_label = tk.Label(self.sidebar, text="")
+        self.white_points_label.pack()
+        self.black_points_label = tk.Label(self.sidebar, text="")
+        self.black_points_label.pack()
 
         self.canvas.bind("<Configure>", self.refresh_board)
         self.canvas.bind("<ButtonPress-1>", self.on_click)
@@ -79,7 +100,8 @@ class ChessBoard(tk.Frame):
             x = offset_x + col * self.size + self.size / 2
             y = offset_y + row * self.size + self.size / 2
             radius = self.size // 8
-            self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="blue", tags="move_indicator")
+            color = "blue" if move not in self.pieces else "red"
+            self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color, tags="move_indicator")
 
     def refresh_board(self, event=None):
         canvas_width = self.canvas.winfo_width()
@@ -169,14 +191,48 @@ class ChessBoard(tk.Frame):
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
             if (to_pos in self.calculated_moves):
+                captured_piece = self.pieces.pop(to_pos, None)  # Capture piece if present
                 piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
-                if to_pos in self.pieces:
-                    del self.pieces[to_pos]  # Remove piece already at destination (if any)
                 self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
                 self.calculated_moves = []
 
+                if captured_piece:
+                    self.capture_piece(captured_piece)
+
             # Refresh the board to update the canvas
             self.refresh_board()
+
+    def capture_piece(self, captured_piece):
+        piece_name = captured_piece.split("_")[1]
+        points = {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 99}
+        point_value = points.get(piece_name, 0)
+
+        # Resize the image for captured piece
+        capture_image = Image.open(f'Pieces/{captured_piece}.png').convert("RGBA")
+        capture_image = capture_image.resize((self.size // 3, self.size // 3), Image.LANCZOS)
+        capture_image = ImageTk.PhotoImage(capture_image)
+
+        if captured_piece.startswith("white"):
+            self.black_points += point_value
+            capture_label = tk.Label(self.black_captures_frame, image=capture_image)
+            capture_label.image = capture_image
+            capture_label.pack()
+        else:
+            self.white_points += point_value
+            capture_label = tk.Label(self.white_captures_frame, image=capture_image)
+            capture_label.image = capture_image
+            capture_label.pack()
+
+        # Update points display only for the leading side
+        if self.white_points > self.black_points:
+            self.white_points_label.config(text=f"+{self.white_points - self.black_points}")
+            self.black_points_label.config(text="")
+        elif self.black_points > self.white_points:
+            self.black_points_label.config(text=f"+{self.black_points - self.white_points}")
+            self.white_points_label.config(text="")
+        else:
+            self.white_points_label.config(text="")
+            self.black_points_label.config(text="")
 
     def add_piece(self, piece, position):
         self.pieces[position] = piece
@@ -279,21 +335,27 @@ class ChessBoard(tk.Frame):
                 pass
             case "pawn":
                 # Calculate moves for pawn
-                if (position[1] == 6 and piece.split("_")[0] == "white") or (position[1] == 1 and piece.split("_")[0] == "black"):
-                    if (piece.split("_")[0] == "white"):
-                        positions_available.append((position[0], position[1] - 1))
-                        positions_available.append((position[0], position[1] - 2))
-                    else:
-                        positions_available.append((position[0], position[1] + 1))
-                        positions_available.append((position[0], position[1] + 2))
+                direction = -1 if piece.split("_")[0] == "white" else 1
+                start_row = 6 if piece.split("_")[0] == "white" else 1
+                if position[1] == start_row:
+                    if (position[0], position[1] + direction) not in self.pieces:
+                        positions_available.append((position[0], position[1] + direction))
+                    if (position[0], position[1] + 2 * direction) not in self.pieces:
+                        positions_available.append((position[0], position[1] + 2 * direction))
                 else:
-                    if (piece.split("_")[0] == "white"):
-                        positions_available.append((position[0], position[1] - 1))
-                    else:
-                        positions_available.append((position[0], position[1] + 1))
+                    if (position[0], position[1] + direction) not in self.pieces:
+                        positions_available.append((position[0], position[1] + direction))
+
+                # Capture moves
+                capture_moves = [(position[0] + 1, position[1] + direction), (position[0] - 1, position[1] + direction)]
+                for move in capture_moves:
+                    if 0 <= move[0] < 8 and 0 <= move[1] < 8:
+                        if move in self.pieces and self.pieces[move].split("_")[0] != piece.split("_")[0]:
+                            positions_available.append(move)
+
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] > 7 or pos[1] < 0 or pos[1] > 7:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -303,70 +365,59 @@ class ChessBoard(tk.Frame):
     
     def validMoves(self, calculateMoves: list) -> list:
         valid_moves = []
+        piece_color = self.selected_piece.split("_")[0]
         piece_name = self.selected_piece.split("_")[1]
-        
-        match piece_name:
-            case "knight":
-                for move in calculateMoves:
-                    if move not in self.pieces:
-                        valid_moves.append(move)
-                        
-            case "pawn":
-                for pos in calculateMoves:
-                    if len(calculateMoves) == 1:
-                        if pos not in self.pieces:
-                            valid_moves.append(pos)
-                    else:
-                        if pos == calculateMoves[0] and pos not in self.pieces:
-                            valid_moves.append(pos)
-                        elif pos == calculateMoves[1] and calculateMoves[0] not in self.pieces:
-                            valid_moves.append(pos)
-                        
-            case "rook":
-                for move in calculateMoves:
-                    if move not in self.pieces:
-                        if move[0] == self.selected_position[0]:  # Vertical move
-                            step = 1 if move[1] > self.selected_position[1] else -1
-                            if all((move[0], y) not in self.pieces for y in range(self.selected_position[1] + step, move[1], step)):
+
+        def is_clear_path(start, end, step):
+            current = start
+            while current != end:
+                if current in self.pieces:
+                    return False
+                current = (current[0] + step[0], current[1] + step[1])
+            return True
+
+        for move in calculateMoves:
+            if piece_name in ["rook", "queen"]:
+                if move[0] == self.selected_position[0]:  # Vertical move
+                    step = (0, 1) if move[1] > self.selected_position[1] else (0, -1)
+                    if is_clear_path((self.selected_position[0], self.selected_position[1] + step[1]), move, step):
+                        if move in self.pieces:
+                            if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
-                        elif move[1] == self.selected_position[1]:  # Horizontal move
-                            step = 1 if move[0] > self.selected_position[0] else -1
-                            if all((x, move[1]) not in self.pieces for x in range(self.selected_position[0] + step, move[0], step)):
-                                valid_moves.append(move)
-                        
-            case "bishop":
-                for move in calculateMoves:
-                    if move not in self.pieces:
-                        step_x = 1 if move[0] > self.selected_position[0] else -1
-                        step_y = 1 if move[1] > self.selected_position[1] else -1
-                        if all((x, y) not in self.pieces for x, y in zip(range(self.selected_position[0] + step_x, move[0], step_x), 
-                                                                        range(self.selected_position[1] + step_y, move[1], step_y))):
+                        else:
                             valid_moves.append(move)
-                        
-            case "queen":
-                for move in calculateMoves:
-                    if move not in self.pieces:
-                        if move[0] == self.selected_position[0]:  # Vertical move
-                            step = 1 if move[1] > self.selected_position[1] else -1
-                            if all((move[0], y) not in self.pieces for y in range(self.selected_position[1] + step, move[1], step)):
+                elif move[1] == self.selected_position[1]:  # Horizontal move
+                    step = (1, 0) if move[0] > self.selected_position[0] else (-1, 0)
+                    if is_clear_path((self.selected_position[0] + step[0], self.selected_position[1]), move, step):
+                        if move in self.pieces:
+                            if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
-                        elif move[1] == self.selected_position[1]:  # Horizontal move
-                            step = 1 if move[0] > self.selected_position[0] else -1
-                            if all((x, move[1]) not in self.pieces for x in range(self.selected_position[0] + step, move[0], step)):
+                        else:
+                            valid_moves.append(move)
+            if piece_name in ["bishop", "queen"]:
+                step_x = 1 if move[0] > self.selected_position[0] else -1
+                step_y = 1 if move[1] > self.selected_position[1] else -1
+                if abs(move[0] - self.selected_position[0]) == abs(move[1] - self.selected_position[1]):  # Diagonal move
+                    if is_clear_path((self.selected_position[0] + step_x, self.selected_position[1] + step_y), move, (step_x, step_y)):
+                        if move in self.pieces:
+                            if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
-                        else:  # Diagonal move
-                            step_x = 1 if move[0] > self.selected_position[0] else -1
-                            step_y = 1 if move[1] > self.selected_position[1] else -1
-                            if all((x, y) not in self.pieces for x, y in zip(range(self.selected_position[0] + step_x, move[0], step_x),
-                                                                            range(self.selected_position[1] + step_y, move[1], step_y))):
-                                valid_moves.append(move)
-                        
-            case "king":
-                for move in calculateMoves:
-                    if move not in self.pieces:
+                        else:
+                            valid_moves.append(move)
+            elif piece_name == "pawn":
+                direction = -1 if piece_color == "white" else 1
+                if move in self.pieces:
+                    if move in [(self.selected_position[0] + 1, self.selected_position[1] + direction),
+                                (self.selected_position[0] - 1, self.selected_position[1] + direction)]:
                         valid_moves.append(move)
-                        
-            case _:
-                print("Invalid piece name")
-        
+                elif move not in self.pieces:
+                    if move[0] == self.selected_position[0]:  # Ensure pawns don't move forward if blocked
+                        valid_moves.append(move)
+            else:
+                if move in self.pieces:
+                    if self.pieces[move].split("_")[0] != piece_color:
+                        valid_moves.append(move)
+                else:
+                    valid_moves.append(move)
+
         return valid_moves
