@@ -73,6 +73,7 @@ class ChessBoard(tk.Frame):
         self.update_selection_rectangle(offset_x, offset_y)
 
     def draw_move_indicators(self, offset_x, offset_y):
+        self.canvas.delete("move_indicator")
         for move in self.calculated_moves:
             col, row = move
             x = offset_x + col * self.size + self.size / 2
@@ -107,20 +108,23 @@ class ChessBoard(tk.Frame):
                 self.drag_data["y"] = event.y
 
                 print(f"Selected piece: {self.selected_piece} at {position}")
-                self.calculated_moves = self.Calculate_moves(self.selected_piece, self.selected_position)
+                self.calculated_moves = self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position))
             else:
                 self.click_movement(position)
                 # clear selection
                 self.selected_piece = None
+                self.calculated_moves = []
                 # clear red outline
                 self.update_selection_rectangle()
+                self.refresh_board()
         else:
             self.click_movement(position)
             # clear selection
             self.selected_piece = None
-            #clear red outline
-
-        self.update_selection_rectangle()
+            self.calculated_moves = []
+            # clear red outline
+            self.update_selection_rectangle()
+            self.refresh_board()
 
     def click_movement(self, new_position):
         if self.selected_piece:
@@ -130,7 +134,9 @@ class ChessBoard(tk.Frame):
             self.move_piece(self.selected_position, new_position)
             print(f"Selected position: {self.selected_position}, {new_position}")
             self.selected_position = None
+            self.calculated_moves = []
             self.update_selection_rectangle()
+            self.refresh_board()
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -139,7 +145,6 @@ class ChessBoard(tk.Frame):
             self.canvas.move(self.drag_data["item"], delta_x, delta_y)
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
-
 
     def on_drop(self, event):
         if self.drag_data["item"]:
@@ -154,8 +159,10 @@ class ChessBoard(tk.Frame):
                 else:
                     self.selected_position = None
                     self.selected_piece = None
+                    self.calculated_moves = []
 
                 self.update_selection_rectangle()
+                self.refresh_board()
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
@@ -178,7 +185,6 @@ class ChessBoard(tk.Frame):
     def update_selection_rectangle(self, offset_x=None, offset_y=None):
         if self.selection_rectangle:
             self.canvas.delete(self.selection_rectangle)
-            self.calculated_moves = []
         if self.selected_position:
             if offset_x is None:
                 offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
@@ -294,3 +300,73 @@ class ChessBoard(tk.Frame):
             case _:
                 print("Invalid piece name")
         return positions_available_valide
+    
+    def validMoves(self, calculateMoves: list) -> list:
+        valid_moves = []
+        piece_name = self.selected_piece.split("_")[1]
+        
+        match piece_name:
+            case "knight":
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        valid_moves.append(move)
+                        
+            case "pawn":
+                for pos in calculateMoves:
+                    if len(calculateMoves) == 1:
+                        if pos not in self.pieces:
+                            valid_moves.append(pos)
+                    else:
+                        if pos == calculateMoves[0] and pos not in self.pieces:
+                            valid_moves.append(pos)
+                        elif pos == calculateMoves[1] and calculateMoves[0] not in self.pieces:
+                            valid_moves.append(pos)
+                        
+            case "rook":
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        if move[0] == self.selected_position[0]:  # Vertical move
+                            step = 1 if move[1] > self.selected_position[1] else -1
+                            if all((move[0], y) not in self.pieces for y in range(self.selected_position[1] + step, move[1], step)):
+                                valid_moves.append(move)
+                        elif move[1] == self.selected_position[1]:  # Horizontal move
+                            step = 1 if move[0] > self.selected_position[0] else -1
+                            if all((x, move[1]) not in self.pieces for x in range(self.selected_position[0] + step, move[0], step)):
+                                valid_moves.append(move)
+                        
+            case "bishop":
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        step_x = 1 if move[0] > self.selected_position[0] else -1
+                        step_y = 1 if move[1] > self.selected_position[1] else -1
+                        if all((x, y) not in self.pieces for x, y in zip(range(self.selected_position[0] + step_x, move[0], step_x), 
+                                                                        range(self.selected_position[1] + step_y, move[1], step_y))):
+                            valid_moves.append(move)
+                        
+            case "queen":
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        if move[0] == self.selected_position[0]:  # Vertical move
+                            step = 1 if move[1] > self.selected_position[1] else -1
+                            if all((move[0], y) not in self.pieces for y in range(self.selected_position[1] + step, move[1], step)):
+                                valid_moves.append(move)
+                        elif move[1] == self.selected_position[1]:  # Horizontal move
+                            step = 1 if move[0] > self.selected_position[0] else -1
+                            if all((x, move[1]) not in self.pieces for x in range(self.selected_position[0] + step, move[0], step)):
+                                valid_moves.append(move)
+                        else:  # Diagonal move
+                            step_x = 1 if move[0] > self.selected_position[0] else -1
+                            step_y = 1 if move[1] > self.selected_position[1] else -1
+                            if all((x, y) not in self.pieces for x, y in zip(range(self.selected_position[0] + step_x, move[0], step_x),
+                                                                            range(self.selected_position[1] + step_y, move[1], step_y))):
+                                valid_moves.append(move)
+                        
+            case "king":
+                for move in calculateMoves:
+                    if move not in self.pieces:
+                        valid_moves.append(move)
+                        
+            case _:
+                print("Invalid piece name")
+        
+        return valid_moves
