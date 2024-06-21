@@ -112,6 +112,7 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
+                print(self.isObstacleInWay(self.Calculate_moves(self.selected_piece, self.selected_position), new_position))
                 self.move_piece(self.selected_position, new_position)
                 self.selected_piece = None
                 self.selected_position = None
@@ -129,16 +130,84 @@ class ChessBoard(tk.Frame):
     
     
     def isObstacleInWay(self, calculateMoves: list, destination: tuple) -> bool:
-        if destination in calculateMoves:
-            if destination in self.pieces:
-                selected_piece_color = self.selected_piece.split('_')[0]
-                destination_piece_color = self.pieces[destination].split('_')[0]
-                return selected_piece_color != destination_piece_color
-            else:
+        piece_name = self.selected_piece.split("_")[1]
+        match piece_name:
+            case "knight":
+                if destination in self.pieces:
+                    return True
                 return False
-        else:
-            return True
+            case "pawn":
+                for pos in calculateMoves:
+                    if len(calculateMoves) == 1:
+                        if destination in self.pieces:
+                            return True
+                        return False
+                    else:
+                        if destination == pos and pos == calculateMoves[0]:
+                            if destination in self.pieces:
+                                return True
+                            return False
+                        elif destination == pos and pos == calculateMoves[1]:
+                            if calculateMoves[0] in self.pieces:
+                                return True
+                            return False
+                return False
+            
+            case "rook":
+                if destination in self.pieces:
+                    return True
+                if destination[0] == self.selected_position[0]:  # Vertical move
+                    step = 1 if destination[1] > self.selected_position[1] else -1
+                    for y in range(self.selected_position[1] + step, destination[1], step):
+                        if (destination[0], y) in self.pieces:
+                            return True
+                elif destination[1] == self.selected_position[1]:  # Horizontal move
+                    step = 1 if destination[0] > self.selected_position[0] else -1
+                    for x in range(self.selected_position[0] + step, destination[0], step):
+                        if (x, destination[1]) in self.pieces:
+                            return True
+                return False
+            
+            case "bishop":
+                if destination in self.pieces:
+                    return True
+                step_x = 1 if destination[0] > self.selected_position[0] else -1
+                step_y = 1 if destination[1] > self.selected_position[1] else -1
+                for x, y in zip(range(self.selected_position[0] + step_x, destination[0], step_x),
+                                range(self.selected_position[1] + step_y, destination[1], step_y)):
+                    if (x, y) in self.pieces:
+                        return True
+                return False
+            
+            case "queen":
+                if destination in self.pieces:
+                    return True
+                if destination[0] == self.selected_position[0]:  # Vertical move
+                    step = 1 if destination[1] > self.selected_position[1] else -1
+                    for y in range(self.selected_position[1] + step, destination[1], step):
+                        if (destination[0], y) in self.pieces:
+                            return True
+                elif destination[1] == self.selected_position[1]:  # Horizontal move
+                    step = 1 if destination[0] > self.selected_position[0] else -1
+                    for x in range(self.selected_position[0] + step, destination[0], step):
+                        if (x, destination[1]) in self.pieces:
+                            return True
+                else:  # Diagonal move
+                    step_x = 1 if destination[0] > self.selected_position[0] else -1
+                    step_y = 1 if destination[1] > self.selected_position[1] else -1
+                    for x, y in zip(range(self.selected_position[0] + step_x, destination[0], step_x),
+                                    range(self.selected_position[1] + step_y, destination[1], step_y)):
+                        if (x, y) in self.pieces:
+                            return True
+                return False
+            
+            case "king":
+                if destination in self.pieces:
+                    return True
+                return False
 
+            case _:
+                print("Invalid piece name")
 
 
     def Calculate_moves(self, piece, position):
