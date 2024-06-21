@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 
+
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -13,6 +14,7 @@ class ChessBoard(tk.Frame):
         self.selected_piece = None
         self.selected_position = None
         self.drag_data = {"x": 0, "y": 0, "item": None}
+        self.selection_rectangle = None
 
         self.piece_images = {}
         self.load_pieces()
@@ -31,7 +33,7 @@ class ChessBoard(tk.Frame):
         for color in colors:
             for piece in piece_names:
                 png_file = f'Pieces/{color}_{piece}.png'
-                image = Image.open(png_file).convert("RGBA")  # Ensure the image has an alpha channel
+                image = Image.open(png_file).convert("RGBA")
                 image = image.resize((self.size, self.size), Image.LANCZOS)
                 self.piece_images[f'{color}_{piece}'] = ImageTk.PhotoImage(image)
 
@@ -49,84 +51,134 @@ class ChessBoard(tk.Frame):
                 self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=color, tags="square")
                 color = self.color1 if color == self.color2 else self.color2
 
-        # Draw the row numbers
         for row in range(self.rows):
             y = offset_y + row * self.size + self.size / 2
             self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
 
-        # Draw the column letters
         letters = "abcdefgh"
         for col in range(self.columns):
             x = offset_x + col * self.size + self.size / 2
-            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col], tags="square")
+            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col],
+                                    tags="square")
 
-        # Draw pieces
         for position, piece in self.pieces.items():
             col, row = position
             x = offset_x + col * self.size
             y = offset_y + row * self.size
-            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece], tags=("piece", position))
+            self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
+                                     tags=("piece", position))
+
+        self.update_selection_rectangle(offset_x, offset_y)
 
     def refresh_board(self, event=None):
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
         self.size = min(int(canvas_width / (self.columns + 2)), int(canvas_height / (self.rows + 2)))
 
-        # Calculate offset to center the board
         offset_x = (canvas_width - self.columns * self.size) / 2
         offset_y = (canvas_height - self.rows * self.size) / 2
 
         self.draw_board(offset_x, offset_y)
 
-    def on_click(self, event):
-        # record the item and its location
+    def piece_location(self, event) -> tuple:
         col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
         row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
-        position = (int(col), int(row))
+        return int(col), int(row)
+
+    def on_click(self, event):
+        position = self.piece_location(event)
 
         if position in self.pieces:
-            self.selected_piece = self.pieces[position]
-            self.selected_position = position
-            print(self.Calculate_moves(self.selected_piece, self.selected_position))
-            self.drag_data["item"] = self.canvas.find_withtag("current")
-            self.drag_data["x"] = event.x
-            self.drag_data["y"] = event.y
+            if not self.selected_piece:
+                self.selected_piece = self.pieces[position]
+                self.selected_position = position
+                self.drag_data["item"] = self.canvas.find_withtag("current")
+                self.drag_data["x"] = event.x
+                self.drag_data["y"] = event.y
+
+                print(f"Selected piece: {self.selected_piece} at {position}")
+            else:
+                self.click_movement(position)
+                # clear selection
+                self.selected_piece = None
+                # clear red outline
+                self.update_selection_rectangle()
+        else:
+            self.click_movement(position)
+            # clear selection
+            self.selected_piece = None
+            #clear red outline
+
+        self.update_selection_rectangle()
+
+    def click_movement(self, new_position):
+        if self.selected_piece:
+            if (new_position[0] < 0 or new_position[0] >= self.columns or
+                    new_position[1] < 0 or new_position[1] >= self.rows):
+                new_position = self.selected_position
+            self.move_piece(self.selected_position, new_position)
+            print(f"Selected position: {self.selected_position}, {new_position}")
+            self.selected_position = None
+            self.update_selection_rectangle()
 
     def on_drag(self, event):
         if self.drag_data["item"]:
-            # compute how much the mouse has moved
             delta_x = event.x - self.drag_data["x"]
             delta_y = event.y - self.drag_data["y"]
-            # move the object the appropriate amount
             self.canvas.move(self.drag_data["item"], delta_x, delta_y)
-            # record the new position
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
 
     def on_drop(self, event):
         if self.drag_data["item"]:
-            col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
-            row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
-            new_position = (int(col), int(row))
+            new_position = self.piece_location(event)
             if self.selected_piece:
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
                 self.move_piece(self.selected_position, new_position)
-                self.selected_piece = None
-                self.selected_position = None
+                if new_position == self.selected_position:
+                    self.selected_piece = new_position
+                else:
+                    self.selected_position = None
+                    self.selected_piece = None
 
-            # reset the drag data
+                self.update_selection_rectangle()
+
             self.drag_data = {"x": 0, "y": 0, "item": None}
+
+    # def move_piece(self, from_pos, to_pos):
+    #     if from_pos in self.pieces:
+    #         self.pieces[to_pos] = self.pieces.pop(from_pos)
+    #         self.refresh_board()
 
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
-            self.pieces[to_pos] = self.pieces.pop(from_pos)
+            piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
+            if to_pos in self.pieces:
+                del self.pieces[to_pos]  # Remove piece already at destination (if any)
+            self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
+
+            # Refresh the board to update the canvas
             self.refresh_board()
 
     def add_piece(self, piece, position):
         self.pieces[position] = piece
         self.refresh_board()
+
+    def update_selection_rectangle(self, offset_x=None, offset_y=None):
+        if self.selection_rectangle:
+            self.canvas.delete(self.selection_rectangle)
+        if self.selected_position:
+            if offset_x is None:
+                offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
+            if offset_y is None:
+                offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
+            col, row = self.selected_position
+            x1 = offset_x + col * self.size
+            y1 = offset_y + row * self.size
+            self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
+                                                                    outline="yellow", width=3)
 
     def Calculate_moves(self, piece, position):
         piece_name = piece.split("_")[1]
