@@ -169,6 +169,11 @@ class ChessBoard(tk.Frame):
             self.canvas.move(self.drag_data["item"], delta_x, delta_y)
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
+            offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
+            offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
+            self.draw_move_indicators(offset_x, offset_y) # Draw move indicators while dragging
+
+
 
     def on_drop(self, event):
         if self.drag_data["item"]:
