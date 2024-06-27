@@ -48,6 +48,8 @@ class ChessBoard(tk.Frame):
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_drop)
 
+        self.current_turn = "white"  # Initial turn set to white
+
     def load_pieces(self):
         piece_names = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
         colors = ['white', 'black']
@@ -123,14 +125,15 @@ class ChessBoard(tk.Frame):
 
         if position in self.pieces:
             if not self.selected_piece:
-                self.selected_piece = self.pieces[position]
-                self.selected_position = position
-                self.drag_data["item"] = self.canvas.find_withtag("current")
-                self.drag_data["x"] = event.x
-                self.drag_data["y"] = event.y
+                if self.pieces[position].split("_")[0] == self.current_turn:  # Check if it's the correct turn
+                    self.selected_piece = self.pieces[position]
+                    self.selected_position = position
+                    self.drag_data["item"] = self.canvas.find_withtag("current")
+                    self.drag_data["x"] = event.x
+                    self.drag_data["y"] = event.y
 
-                print(f"Selected piece: {self.selected_piece} at {position}")
-                self.calculated_moves = self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position))
+                    print(f"Selected piece: {self.selected_piece} at {position}")
+                    self.calculated_moves = self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position))
             else:
                 self.click_movement(position)
                 # clear selection
@@ -153,7 +156,9 @@ class ChessBoard(tk.Frame):
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            self.move_piece(self.selected_position, new_position)
+            if self.move_piece(self.selected_position, new_position):
+                # Switch turn only if the move was valid
+                self.current_turn = "black" if self.current_turn == "white" else "white"
             print(f"Selected position: {self.selected_position}, {new_position}")
             self.selected_position = None
             self.calculated_moves = []
@@ -175,7 +180,9 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                self.move_piece(self.selected_position, new_position)
+                if self.move_piece(self.selected_position, new_position):
+                    # Switch turn only if the move was valid
+                    self.current_turn = "black" if self.current_turn == "white" else "white"
                 if new_position == self.selected_position:
                     self.selected_piece = new_position
                 else:
@@ -199,8 +206,10 @@ class ChessBoard(tk.Frame):
                 if captured_piece:
                     self.capture_piece(captured_piece)
 
-            # Refresh the board to update the canvas
-            self.refresh_board()
+                # Refresh the board to update the canvas
+                self.refresh_board()
+                return True
+        return False
 
     def capture_piece(self, captured_piece):
         piece_name = captured_piece.split("_")[1]
