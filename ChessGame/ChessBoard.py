@@ -378,7 +378,7 @@ class ChessBoard(tk.Frame):
         piece_name = self.selected_piece.split("_")[1]
 
         def is_clear_path(start, end, step):
-            current = start
+            current = (start[0] + step[0], start[1] + step[1])
             while current != end:
                 if current in self.pieces:
                     return False
@@ -389,7 +389,7 @@ class ChessBoard(tk.Frame):
             if piece_name in ["rook", "queen"]:
                 if move[0] == self.selected_position[0]:  # Vertical move
                     step = (0, 1) if move[1] > self.selected_position[1] else (0, -1)
-                    if is_clear_path((self.selected_position[0], self.selected_position[1] + step[1]), move, step):
+                    if is_clear_path(self.selected_position, move, step):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
@@ -397,7 +397,7 @@ class ChessBoard(tk.Frame):
                             valid_moves.append(move)
                 elif move[1] == self.selected_position[1]:  # Horizontal move
                     step = (1, 0) if move[0] > self.selected_position[0] else (-1, 0)
-                    if is_clear_path((self.selected_position[0] + step[0], self.selected_position[1]), move, step):
+                    if is_clear_path(self.selected_position, move, step):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
@@ -407,7 +407,7 @@ class ChessBoard(tk.Frame):
                 step_x = 1 if move[0] > self.selected_position[0] else -1
                 step_y = 1 if move[1] > self.selected_position[1] else -1
                 if abs(move[0] - self.selected_position[0]) == abs(move[1] - self.selected_position[1]):  # Diagonal move
-                    if is_clear_path((self.selected_position[0] + step_x, self.selected_position[1] + step_y), move, (step_x, step_y)):
+                    if is_clear_path(self.selected_position, move, (step_x, step_y)):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
@@ -415,14 +415,24 @@ class ChessBoard(tk.Frame):
                             valid_moves.append(move)
             elif piece_name == "pawn":
                 direction = -1 if piece_color == "white" else 1
-                if move in self.pieces:
+                start_row = 6 if piece_color == "white" else 1
+
+                if move not in self.pieces:
+                    if move[0] == self.selected_position[0]:  # Forward move
+                        if move[1] == self.selected_position[1] + direction:  # One step forward
+                            valid_moves.append(move)
+                        elif (move[1] == self.selected_position[1] + 2 * direction and
+                            self.selected_position[1] == start_row and
+                            (self.selected_position[0], self.selected_position[1] + direction) not in self.pieces):
+                            valid_moves.append(move)
+                elif move in self.pieces and self.pieces[move].split("_")[0] != piece_color:
                     if move in [(self.selected_position[0] + 1, self.selected_position[1] + direction),
                                 (self.selected_position[0] - 1, self.selected_position[1] + direction)]:
                         valid_moves.append(move)
-                elif move not in self.pieces:
-                    if move[0] == self.selected_position[0]:  # Ensure pawns don't move forward if blocked
-                        valid_moves.append(move)
-            else:
+            elif piece_name == "knight":
+                if move not in self.pieces or self.pieces[move].split("_")[0] != piece_color:
+                    valid_moves.append(move)
+            elif piece_name == "king":
                 if move in self.pieces:
                     if self.pieces[move].split("_")[0] != piece_color:
                         valid_moves.append(move)
@@ -430,3 +440,4 @@ class ChessBoard(tk.Frame):
                     valid_moves.append(move)
 
         return valid_moves
+
