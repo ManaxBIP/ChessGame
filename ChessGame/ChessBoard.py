@@ -1,3 +1,4 @@
+import random
 import tkinter as tk
 from PIL import Image, ImageTk
 
@@ -33,6 +34,9 @@ class ChessBoard(tk.Frame):
         self.white_points = 0
         self.black_points = 0
         
+        self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
+        print(f"Player color: {self.player_color}")
+        
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
         self.white_captures_label.pack()
         self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
@@ -50,6 +54,8 @@ class ChessBoard(tk.Frame):
 
         self.current_turn = "white"  # Initial turn set to white
 
+        self.add_pieces()
+
     def load_pieces(self):
         piece_names = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
         colors = ['white', 'black']
@@ -60,47 +66,88 @@ class ChessBoard(tk.Frame):
                 image = image.resize((self.size, self.size), Image.LANCZOS)
                 self.piece_images[f'{color}_{piece}'] = ImageTk.PhotoImage(image)
 
+    def add_pieces(self):
+        # Add pieces to the board
+        pieces_layout = {
+            'white': [
+                ('rook', 0, 7), ('knight', 1, 7), ('bishop', 2, 7), ('queen', 3, 7), ('king', 4, 7), ('bishop', 5, 7), ('knight', 6, 7), ('rook', 7, 7),
+                ('pawn', 0, 6), ('pawn', 1, 6), ('pawn', 2, 6), ('pawn', 3, 6), ('pawn', 4, 6), ('pawn', 5, 6), ('pawn', 6, 6), ('pawn', 7, 6)
+            ],
+            'black': [
+                ('rook', 0, 0), ('knight', 1, 0), ('bishop', 2, 0), ('queen', 3, 0), ('king', 4, 0), ('bishop', 5, 0), ('knight', 6, 0), ('rook', 7, 0),
+                ('pawn', 0, 1), ('pawn', 1, 1), ('pawn', 2, 1), ('pawn', 3, 1), ('pawn', 4, 1), ('pawn', 5, 1), ('pawn', 6, 1), ('pawn', 7, 1)
+            ]
+        }
+        for color, pieces in pieces_layout.items():
+            for piece, col, row in pieces:
+                self.add_piece(f"{color}_{piece}", (col, row))
+
     def draw_board(self, offset_x, offset_y):
         self.canvas.delete("square")
         self.canvas.delete("piece")
         self.canvas.delete("move_indicator")
         color = self.color2
+        
         for row in range(self.rows):
             color = self.color1 if color == self.color2 else self.color2
             for col in range(self.columns):
-                x1 = offset_x + col * self.size
-                y1 = offset_y + row * self.size
+                if self.player_color == "white":
+                    x1 = offset_x + col * self.size
+                    y1 = offset_y + row * self.size
+                else:
+                    x1 = offset_x + (self.columns - 1 - col) * self.size
+                    y1 = offset_y + (self.rows - 1 - row) * self.size
+                    
                 x2 = x1 + self.size
                 y2 = y1 + self.size
                 self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=color, tags="square")
                 color = self.color1 if color == self.color2 else self.color2
 
         for row in range(self.rows):
-            y = offset_y + row * self.size + self.size / 2
-            self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
+            if self.player_color == "white":
+                y = offset_y + row * self.size + self.size / 2
+                self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
+            else:
+                y = offset_y + (self.rows - 1 - row) * self.size + self.size / 2
+                self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
 
         letters = "abcdefgh"
+        if (self.player_color == "black"):
+            letters = letters[::-1]
         for col in range(self.columns):
-            x = offset_x + col * self.size + self.size / 2
-            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col],
-                                    tags="square")
+            if self.player_color == "white":
+                x = offset_x + col * self.size + self.size / 2
+                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col], tags="square")
+            else:
+                x = offset_x + (self.columns - 1 - col) * self.size + self.size / 2
+                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[self.columns - 1 - col], tags="square")
 
         for position, piece in self.pieces.items():
             col, row = position
-            x = offset_x + col * self.size
-            y = offset_y + row * self.size
+            if self.player_color == "white":
+                x = offset_x + col * self.size
+                y = offset_y + row * self.size
+            else:
+                x = offset_x + (self.columns - 1 - col) * self.size
+                y = offset_y + (self.rows - 1 - row) * self.size
+
             self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
-                                     tags=("piece", position))
+                                    tags=("piece", position))
 
         self.draw_move_indicators(offset_x, offset_y)
         self.update_selection_rectangle(offset_x, offset_y)
+
 
     def draw_move_indicators(self, offset_x, offset_y):
         self.canvas.delete("move_indicator")
         for move in self.calculated_moves:
             col, row = move
-            x = offset_x + col * self.size + self.size / 2
-            y = offset_y + row * self.size + self.size / 2
+            if self.player_color == "white":
+                x = offset_x + col * self.size + self.size / 2
+                y = offset_y + row * self.size + self.size / 2
+            else:
+                x = offset_x + (self.columns - 1 - col) * self.size + self.size / 2
+                y = offset_y + (self.rows - 1 - row) * self.size + self.size / 2
             radius = self.size // 8
             color = "blue" if move not in self.pieces else "red"
             self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color, tags="move_indicator")
@@ -118,47 +165,52 @@ class ChessBoard(tk.Frame):
     def piece_location(self, event) -> tuple:
         col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
         row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
-        return int(col), int(row)
+
+        col = int(col)
+        row = int(row)
+
+        if self.player_color == "black":
+            col = self.columns - 1 - col
+            row = self.rows - 1 - row
+
+        return col, row
+
 
     def on_click(self, event):
         position = self.piece_location(event)
 
         if position in self.pieces:
             if not self.selected_piece:
-                if self.pieces[position].split("_")[0] == self.current_turn:  # Check if it's the correct turn
-                    self.selected_piece = self.pieces[position]
-                    self.selected_position = position
-                    self.drag_data["item"] = self.canvas.find_withtag("current")
-                    self.drag_data["x"] = event.x
-                    self.drag_data["y"] = event.y
+                if self.pieces[position].split("_")[0] != self.current_turn:
+                    return
+                self.selected_piece = self.pieces[position]
+                self.selected_position = position
+                self.drag_data["item"] = self.canvas.find_withtag("current")
+                self.drag_data["x"] = event.x
+                self.drag_data["y"] = event.y
 
-                    print(f"Selected piece: {self.selected_piece} at {position}")
-                    self.calculated_moves = self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position))
+                print(f"Selected piece: {self.selected_piece} at {position}")
+                self.calculated_moves = self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position))
             else:
                 self.click_movement(position)
-                # clear selection
                 self.selected_piece = None
                 self.calculated_moves = []
-                # clear red outline
                 self.update_selection_rectangle()
                 self.refresh_board()
         else:
             self.click_movement(position)
-            # clear selection
             self.selected_piece = None
             self.calculated_moves = []
-            # clear red outline
             self.update_selection_rectangle()
             self.refresh_board()
+
 
     def click_movement(self, new_position):
         if self.selected_piece:
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            if self.move_piece(self.selected_position, new_position):
-                # Switch turn only if the move was valid
-                self.current_turn = "black" if self.current_turn == "white" else "white"
+            self.move_piece(self.selected_position, new_position)
             print(f"Selected position: {self.selected_position}, {new_position}")
             self.selected_position = None
             self.calculated_moves = []
@@ -173,6 +225,7 @@ class ChessBoard(tk.Frame):
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
 
+
     def on_drop(self, event):
         if self.drag_data["item"]:
             new_position = self.piece_location(event)
@@ -180,9 +233,7 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                if self.move_piece(self.selected_position, new_position):
-                    # Switch turn only if the move was valid
-                    self.current_turn = "black" if self.current_turn == "white" else "white"
+                self.move_piece(self.selected_position, new_position)
                 if new_position == self.selected_position:
                     self.selected_piece = new_position
                 else:
@@ -195,6 +246,7 @@ class ChessBoard(tk.Frame):
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
+
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
             if (to_pos in self.calculated_moves):
@@ -202,14 +254,15 @@ class ChessBoard(tk.Frame):
                 piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
                 self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
                 self.calculated_moves = []
-
                 if captured_piece:
                     self.capture_piece(captured_piece)
+                    
+                self.current_turn = "black" if self.current_turn == "white" else "white"
 
-                # Refresh the board to update the canvas
-                self.refresh_board()
-                return True
+            self.refresh_board()
+            return True
         return False
+
 
     def capture_piece(self, captured_piece):
         piece_name = captured_piece.split("_")[1]
@@ -256,6 +309,9 @@ class ChessBoard(tk.Frame):
             if offset_y is None:
                 offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
             col, row = self.selected_position
+            if self.player_color == "black":
+                col = self.columns - 1 - col
+                row = self.rows - 1 - row
             x1 = offset_x + col * self.size
             y1 = offset_y + row * self.size
             self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
@@ -441,3 +497,8 @@ class ChessBoard(tk.Frame):
 
         return valid_moves
 
+if __name__ == "__main__":
+    root = tk.Tk()
+    board = ChessBoard(root)
+    board.pack(side="top", fill="both", expand=True)
+    root.mainloop()
