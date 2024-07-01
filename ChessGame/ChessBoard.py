@@ -2,6 +2,7 @@ import random
 import tkinter as tk
 from PIL import Image, ImageTk
 
+
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -25,18 +26,18 @@ class ChessBoard(tk.Frame):
 
         self.sidebar = tk.Frame(self)
         self.sidebar.pack(side="right", fill="y")
-        
+
         self.white_captures_frame = tk.Frame(self.sidebar)
         self.white_captures_frame.pack()
         self.black_captures_frame = tk.Frame(self.sidebar)
         self.black_captures_frame.pack()
-        
+
         self.white_points = 0
         self.black_points = 0
         
         self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
         print(f"Player color: {self.player_color}")
-        
+      
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
         self.white_captures_label.pack()
         self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
@@ -159,7 +160,7 @@ class ChessBoard(tk.Frame):
 
         offset_x = (canvas_width - self.columns * self.size) / 2
         offset_y = (canvas_height - self.rows * self.size) / 2
-        
+
         self.draw_board(offset_x, offset_y)
 
     def piece_location(self, event) -> tuple:
@@ -350,7 +351,7 @@ class ChessBoard(tk.Frame):
                 positions_available.append((position[0] - 1, position[1] - 1))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -367,7 +368,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0] - i, position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -380,7 +381,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0], position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -393,7 +394,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0] - i, position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 positions_available = positions_available_valide
@@ -410,7 +411,7 @@ class ChessBoard(tk.Frame):
                 positions_available.append((position[0] - 2, position[1] - 1))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 pass
