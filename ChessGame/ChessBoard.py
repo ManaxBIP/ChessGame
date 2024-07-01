@@ -1,6 +1,8 @@
 import random
 import tkinter as tk
+from tkinter import messagebox
 from PIL import Image, ImageTk
+
 
 class ChessBoard(tk.Frame):
     def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
@@ -259,7 +261,7 @@ class ChessBoard(tk.Frame):
                 self.calculated_moves = []
                 if captured_piece:
                     self.capture_piece(captured_piece)
-                
+
                 # Check if the move has placed the current player's king in check
                 if self.check_for_check(self.current_turn):
                     print("Move is invalid as it leaves king in check")
@@ -269,11 +271,16 @@ class ChessBoard(tk.Frame):
                         self.pieces[to_pos] = captured_piece
                     return False
                 else:
+                    # Check for checkmate after a valid move
+                    if self.check_for_checkmate("black" if self.current_turn == "white" else "white"):
+                        winner_color = "white" if self.current_turn == "black" else "black"
+                        self.show_checkmate_message(winner_color)
                     return True
 
             self.refresh_board()
             return False
         return False
+
 
 
     def capture_piece(self, captured_piece):
@@ -527,6 +534,56 @@ class ChessBoard(tk.Frame):
                 if king_position in self.validMoves(piece, pos, moves):
                     return True
         return False
+
+    def check_for_checkmate(self, color):
+        # Check if the player is in checkmate
+        if not self.check_for_check(color):
+            return False
+
+        pieces_copy = list(self.pieces.items())  # Create a copy of the items to avoid RuntimeError
+
+        for pos, piece in pieces_copy:
+            if piece.split("_")[0] == color:
+                valid_moves = self.validMoves(piece, pos, self.Calculate_moves(piece, pos))
+                for move in valid_moves:
+                    original_piece = self.pieces.get(move)
+                    self.pieces[move] = self.pieces.pop(pos)
+                    if not self.check_for_check(color):
+                        self.pieces[pos] = self.pieces.pop(move)
+                        if original_piece:
+                            self.pieces[move] = original_piece
+                        return False
+                    self.pieces[pos] = self.pieces.pop(move)
+                    if original_piece:
+                        self.pieces[move] = original_piece
+
+        return True
+
+
+    def show_checkmate_message(self, winner_color):
+        winner = "White" if winner_color == "white" else "Black"
+        winner = "Black" if winner == "White" else "White"
+        message = f"Checkmate! {winner} wins!"
+        tk.messagebox.showinfo("Game Over", message)
+        self.quit()
+
+    def reset_board(self):
+        self.pieces.clear()
+        self.selected_piece = None
+        self.selected_position = None
+        self.drag_data = {"x": 0, "y": 0, "item": None}
+        self.selection_rectangle = None
+        self.calculated_moves = []
+        self.white_points = 0
+        self.black_points = 0
+        for widget in self.white_captures_frame.winfo_children():
+            widget.destroy()
+        for widget in self.black_captures_frame.winfo_children():
+            widget.destroy()
+        self.white_points_label.config(text="")
+        self.black_points_label.config(text="")
+        self.add_pieces()
+        self.refresh_board()
 
 if __name__ == "__main__":
     root = tk.Tk()
