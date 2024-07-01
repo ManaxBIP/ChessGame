@@ -234,6 +234,10 @@ class ChessBoard(tk.Frame):
             offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
             self.draw_move_indicators(offset_x, offset_y)
 
+            # Amener la pièce sélectionnée en avant-plan
+            self.canvas.tag_raise(self.drag_data["item"], "piece")
+            self.canvas.tag_lower("move_indicator", self.drag_data["item"])
+
 
     def on_drop(self, event):
         if self.drag_data["item"]:
