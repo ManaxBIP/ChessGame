@@ -237,6 +237,7 @@ class ChessBoard(tk.Frame):
             # Amener la pièce sélectionnée en avant-plan
             self.canvas.tag_raise(self.drag_data["item"], "piece")
             self.canvas.tag_lower("move_indicator", self.drag_data["item"])
+            self.update_selection_rectangle()
 
 
     def on_drop(self, event):
@@ -365,6 +366,7 @@ class ChessBoard(tk.Frame):
             y1 = offset_y + row * self.size
             self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
                                                                     outline="yellow", width=3)
+            self.canvas.tag_lower(self.selection_rectangle, "piece")
 
     def Calculate_moves(self, piece, position):
         piece_name = piece.split("_")[1]
