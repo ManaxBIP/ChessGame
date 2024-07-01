@@ -273,6 +273,10 @@ class ChessBoard(tk.Frame):
                         self.pieces[to_pos] = captured_piece
                     return False
                 else:
+                    # Check for pawn promotion
+                    if piece_to_move.split("_")[1] == "pawn" and (to_pos[1] == 0 or to_pos[1] == 7):
+                        self.promote_pawn(to_pos)
+
                     # Check for checkmate after a valid move
                     if self.check_for_checkmate("black" if self.current_turn == "white" else "white"):
                         winner_color = "white" if self.current_turn == "black" else "black"
@@ -283,6 +287,26 @@ class ChessBoard(tk.Frame):
             return False
         return False
 
+
+    def promote_pawn(self, position):
+        promotion_window = tk.Toplevel(self)
+        promotion_window.title("Promote Pawn")
+        promotion_window.geometry("350x100")
+
+        label = tk.Label(promotion_window, text="Choose a piece to promote to:")
+        label.pack(pady=5)
+
+        def promote(piece_type):
+            color = "white" if self.current_turn == "white" else "black"
+            color = "black" if color == "white" else "white"
+            self.pieces[position] = f"{color}_{piece_type}"
+            self.refresh_board()
+            promotion_window.destroy()
+
+        pieces = ["queen", "rook", "bishop", "knight"]
+        for piece in pieces:
+            button = tk.Button(promotion_window, text=piece.capitalize(), command=lambda p=piece: promote(p))
+            button.pack(pady=2, padx=5, side=tk.LEFT)
 
 
     def capture_piece(self, captured_piece):
