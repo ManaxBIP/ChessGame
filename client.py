@@ -1,11 +1,13 @@
-import random
+import socket
+import threading
 import tkinter as tk
 from PIL import Image, ImageTk
 
-
 class ChessBoard(tk.Frame):
-    def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
+    def __init__(self, parent, network, color, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
+        self.network = network
+        self.color = color
         self.rows = rows
         self.columns = columns
         self.size = size
@@ -26,18 +28,15 @@ class ChessBoard(tk.Frame):
 
         self.sidebar = tk.Frame(self)
         self.sidebar.pack(side="right", fill="y")
-
+        
         self.white_captures_frame = tk.Frame(self.sidebar)
         self.white_captures_frame.pack()
         self.black_captures_frame = tk.Frame(self.sidebar)
         self.black_captures_frame.pack()
-
+        
         self.white_points = 0
         self.black_points = 0
         
-        self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
-        print(f"Player color: {self.player_color}")
-      
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
         self.white_captures_label.pack()
         self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
@@ -48,12 +47,16 @@ class ChessBoard(tk.Frame):
         self.black_points_label = tk.Label(self.sidebar, text="")
         self.black_points_label.pack()
 
+        self.waiting_label = tk.Label(self.canvas, text="En attente d'adversaire", font=("Helvetica", 24))
+        self.waiting_label.place(relx=0.5, rely=0.5, anchor="center")
+
         self.canvas.bind("<Configure>", self.refresh_board)
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_drop)
 
-        self.current_turn = "white"  # Initial turn set to white
+        self.receive_thread = threading.Thread(target=self.receive_moves)
+        self.receive_thread.start()
 
         self.add_pieces()
 
@@ -88,67 +91,42 @@ class ChessBoard(tk.Frame):
         self.canvas.delete("piece")
         self.canvas.delete("move_indicator")
         color = self.color2
-        
         for row in range(self.rows):
             color = self.color1 if color == self.color2 else self.color2
             for col in range(self.columns):
-                if self.player_color == "white":
-                    x1 = offset_x + col * self.size
-                    y1 = offset_y + row * self.size
-                else:
-                    x1 = offset_x + (self.columns - 1 - col) * self.size
-                    y1 = offset_y + (self.rows - 1 - row) * self.size
-                    
+                x1 = offset_x + col * self.size
+                y1 = offset_y + row * self.size
                 x2 = x1 + self.size
                 y2 = y1 + self.size
                 self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=color, tags="square")
                 color = self.color1 if color == self.color2 else self.color2
 
         for row in range(self.rows):
-            if self.player_color == "white":
-                y = offset_y + row * self.size + self.size / 2
-                self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
-            else:
-                y = offset_y + (self.rows - 1 - row) * self.size + self.size / 2
-                self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
+            y = offset_y + row * self.size + self.size / 2
+            self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
 
         letters = "abcdefgh"
-        if (self.player_color == "black"):
-            letters = letters[::-1]
         for col in range(self.columns):
-            if self.player_color == "white":
-                x = offset_x + col * self.size + self.size / 2
-                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col], tags="square")
-            else:
-                x = offset_x + (self.columns - 1 - col) * self.size + self.size / 2
-                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[self.columns - 1 - col], tags="square")
+            x = offset_x + col * self.size + self.size / 2
+            self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col],
+                                    tags="square")
 
         for position, piece in self.pieces.items():
             col, row = position
-            if self.player_color == "white":
-                x = offset_x + col * self.size
-                y = offset_y + row * self.size
-            else:
-                x = offset_x + (self.columns - 1 - col) * self.size
-                y = offset_y + (self.rows - 1 - row) * self.size
-
+            x = offset_x + col * self.size
+            y = offset_y + row * self.size
             self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
-                                    tags=("piece", position))
+                                     tags=("piece", position))
 
         self.draw_move_indicators(offset_x, offset_y)
         self.update_selection_rectangle(offset_x, offset_y)
-
 
     def draw_move_indicators(self, offset_x, offset_y):
         self.canvas.delete("move_indicator")
         for move in self.calculated_moves:
             col, row = move
-            if self.player_color == "white":
-                x = offset_x + col * self.size + self.size / 2
-                y = offset_y + row * self.size + self.size / 2
-            else:
-                x = offset_x + (self.columns - 1 - col) * self.size + self.size / 2
-                y = offset_y + (self.rows - 1 - row) * self.size + self.size / 2
+            x = offset_x + col * self.size + self.size / 2
+            y = offset_y + row * self.size + self.size / 2
             radius = self.size // 8
             color = "blue" if move not in self.pieces else "red"
             self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color, tags="move_indicator")
@@ -160,61 +138,53 @@ class ChessBoard(tk.Frame):
 
         offset_x = (canvas_width - self.columns * self.size) / 2
         offset_y = (canvas_height - self.rows * self.size) / 2
-
+        
         self.draw_board(offset_x, offset_y)
 
     def piece_location(self, event) -> tuple:
         col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
         row = (event.y - (self.canvas.winfo_height() - self.rows * self.size) / 2) // self.size
-
-        col = int(col)
-        row = int(row)
-
-        if self.player_color == "black":
-            col = self.columns - 1 - col
-            row = self.rows - 1 - row
-
-        return col, row
-
+        return int(col), int(row)
 
     def on_click(self, event):
-        position = self.piece_location(event)
+        if not self.waiting_label.winfo_ismapped():
+            position = self.piece_location(event)
 
-        if position in self.pieces:
-            if not self.selected_piece:
-                if self.pieces[position].split("_")[0] != self.current_turn:
-                    return
-                self.selected_piece = self.pieces[position]
-                self.selected_position = position
-                self.drag_data["item"] = self.canvas.find_withtag("current")
-                self.drag_data["x"] = event.x
-                self.drag_data["y"] = event.y
+            if position in self.pieces:
+                if not self.selected_piece:
+                    self.selected_piece = self.pieces[position]
+                    self.selected_position = position
+                    self.drag_data["item"] = self.canvas.find_withtag("current")
+                    self.drag_data["x"] = event.x
+                    self.drag_data["y"] = event.y
 
-                print(f"Selected piece: {self.selected_piece} at {position}")
-                self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position,
-                                                        self.Calculate_moves(self.selected_piece, self.selected_position))
-                            
+                    print(f"Selected piece: {self.selected_piece} at {position}")
+                    self.calculated_moves = self.validMoves(self.Calculate_moves(self.selected_piece, self.selected_position))
+                else:
+                    self.click_movement(position)
+                    # clear selection
+                    self.selected_piece = None
+                    self.calculated_moves = []
+                    # clear red outline
+                    self.update_selection_rectangle()
+                    self.refresh_board()
             else:
                 self.click_movement(position)
+                # clear selection
                 self.selected_piece = None
                 self.calculated_moves = []
+                # clear red outline
                 self.update_selection_rectangle()
                 self.refresh_board()
-        else:
-            self.click_movement(position)
-            self.selected_piece = None
-            self.calculated_moves = []
-            self.update_selection_rectangle()
-            self.refresh_board()
-
 
     def click_movement(self, new_position):
         if self.selected_piece:
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            if self.move_piece(self.selected_position, new_position):
-                self.current_turn = "black" if self.current_turn == "white" else "white"
+            self.move_piece(self.selected_position, new_position)
+            self.send_move(self.selected_position, new_position)
+            print(f"Selected position: {self.selected_position}, {new_position}")
             self.selected_position = None
             self.calculated_moves = []
             self.update_selection_rectangle()
@@ -227,14 +197,6 @@ class ChessBoard(tk.Frame):
             self.canvas.move(self.drag_data["item"], delta_x, delta_y)
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
-            offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
-            offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
-            self.draw_move_indicators(offset_x, offset_y)
-
-            # Amener la pièce sélectionnée en avant-plan
-            self.canvas.tag_raise(self.drag_data["item"], "piece")
-            self.canvas.tag_lower("move_indicator", self.drag_data["item"])
-
 
     def on_drop(self, event):
         if self.drag_data["item"]:
@@ -243,43 +205,33 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                if self.move_piece(self.selected_position, new_position):
-                    self.current_turn = "black" if self.current_turn == "white" else "white"
-                self.selected_position = None
-                self.selected_piece = None
-                self.calculated_moves = []
+                self.move_piece(self.selected_position, new_position)
+                self.send_move(self.selected_position, new_position)
+                if new_position == self.selected_position:
+                    self.selected_piece = new_position
+                else:
+                    self.selected_position = None
+                    self.selected_piece = None
+                    self.calculated_moves = []
 
                 self.update_selection_rectangle()
                 self.refresh_board()
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
-
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
-            if to_pos in self.validMoves(self.pieces[from_pos], from_pos, self.Calculate_moves(self.pieces[from_pos], from_pos)):
+            if (to_pos in self.calculated_moves):
                 captured_piece = self.pieces.pop(to_pos, None)  # Capture piece if present
                 piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
                 self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
                 self.calculated_moves = []
+
                 if captured_piece:
                     self.capture_piece(captured_piece)
-                
-                # Check if the move has placed the current player's king in check
-                if self.check_for_check(self.current_turn):
-                    print("Move is invalid as it leaves king in check")
-                    # Revert the move
-                    self.pieces[from_pos] = self.pieces.pop(to_pos)
-                    if captured_piece:
-                        self.pieces[to_pos] = captured_piece
-                    return False
-                else:
-                    return True
 
+            # Refresh the board to update the canvas
             self.refresh_board()
-            return False
-        return False
-
 
     def capture_piece(self, captured_piece):
         piece_name = captured_piece.split("_")[1]
@@ -326,9 +278,6 @@ class ChessBoard(tk.Frame):
             if offset_y is None:
                 offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
             col, row = self.selected_position
-            if self.player_color == "black":
-                col = self.columns - 1 - col
-                row = self.rows - 1 - row
             x1 = offset_x + col * self.size
             y1 = offset_y + row * self.size
             self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
@@ -351,7 +300,7 @@ class ChessBoard(tk.Frame):
                 positions_available.append((position[0] - 1, position[1] - 1))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                        continue
+                       continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -368,7 +317,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0] - i, position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                        continue
+                       continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -381,7 +330,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0], position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                        continue
+                       continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -394,7 +343,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0] - i, position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                        continue
+                       continue
                     else:
                         positions_available_valide.append(pos)
                 positions_available = positions_available_valide
@@ -411,7 +360,7 @@ class ChessBoard(tk.Frame):
                 positions_available.append((position[0] - 2, position[1] - 1))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                        continue
+                       continue
                     else:
                         positions_available_valide.append(pos)
                 pass
@@ -445,13 +394,13 @@ class ChessBoard(tk.Frame):
                 print("Invalid piece name")
         return positions_available_valide
     
-    def validMoves(self, piece, position, calculateMoves: list) -> list:
+    def validMoves(self, calculateMoves: list) -> list:
         valid_moves = []
-        piece_color = piece.split("_")[0]
-        piece_name = piece.split("_")[1]
+        piece_color = self.selected_piece.split("_")[0]
+        piece_name = self.selected_piece.split("_")[1]
 
         def is_clear_path(start, end, step):
-            current = (start[0] + step[0], start[1] + step[1])
+            current = start
             while current != end:
                 if current in self.pieces:
                     return False
@@ -460,27 +409,27 @@ class ChessBoard(tk.Frame):
 
         for move in calculateMoves:
             if piece_name in ["rook", "queen"]:
-                if move[0] == position[0]:  # Vertical move
-                    step = (0, 1) if move[1] > position[1] else (0, -1)
-                    if is_clear_path(position, move, step):
+                if move[0] == self.selected_position[0]:  # Vertical move
+                    step = (0, 1) if move[1] > self.selected_position[1] else (0, -1)
+                    if is_clear_path((self.selected_position[0], self.selected_position[1] + step[1]), move, step):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
                         else:
                             valid_moves.append(move)
-                elif move[1] == position[1]:  # Horizontal move
-                    step = (1, 0) if move[0] > position[0] else (-1, 0)
-                    if is_clear_path(position, move, step):
+                elif move[1] == self.selected_position[1]:  # Horizontal move
+                    step = (1, 0) if move[0] > self.selected_position[0] else (-1, 0)
+                    if is_clear_path((self.selected_position[0] + step[0], self.selected_position[1]), move, step):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
                         else:
                             valid_moves.append(move)
             if piece_name in ["bishop", "queen"]:
-                step_x = 1 if move[0] > position[0] else -1
-                step_y = 1 if move[1] > position[1] else -1
-                if abs(move[0] - position[0]) == abs(move[1] - position[1]):  # Diagonal move
-                    if is_clear_path(position, move, (step_x, step_y)):
+                step_x = 1 if move[0] > self.selected_position[0] else -1
+                step_y = 1 if move[1] > self.selected_position[1] else -1
+                if abs(move[0] - self.selected_position[0]) == abs(move[1] - self.selected_position[1]):  # Diagonal move
+                    if is_clear_path((self.selected_position[0] + step_x, self.selected_position[1] + step_y), move, (step_x, step_y)):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
                                 valid_moves.append(move)
@@ -488,24 +437,14 @@ class ChessBoard(tk.Frame):
                             valid_moves.append(move)
             elif piece_name == "pawn":
                 direction = -1 if piece_color == "white" else 1
-                start_row = 6 if piece_color == "white" else 1
-
-                if move not in self.pieces:
-                    if move[0] == position[0]:  # Forward move
-                        if move[1] == position[1] + direction:  # One step forward
-                            valid_moves.append(move)
-                        elif (move[1] == position[1] + 2 * direction and
-                            position[1] == start_row and
-                            (position[0], position[1] + direction) not in self.pieces):
-                            valid_moves.append(move)
-                elif move in self.pieces and self.pieces[move].split("_")[0] != piece_color:
-                    if move in [(position[0] + 1, position[1] + direction),
-                                (position[0] - 1, position[1] + direction)]:
+                if move in self.pieces:
+                    if move in [(self.selected_position[0] + 1, self.selected_position[1] + direction),
+                                (self.selected_position[0] - 1, self.selected_position[1] + direction)]:
                         valid_moves.append(move)
-            elif piece_name == "knight":
-                if move not in self.pieces or self.pieces[move].split("_")[0] != piece_color:
-                    valid_moves.append(move)
-            elif piece_name == "king":
+                elif move not in self.pieces:
+                    if move[0] == self.selected_position[0]:  # Ensure pawns don't move forward if blocked
+                        valid_moves.append(move)
+            else:
                 if move in self.pieces:
                     if self.pieces[move].split("_")[0] != piece_color:
                         valid_moves.append(move)
@@ -514,27 +453,36 @@ class ChessBoard(tk.Frame):
 
         return valid_moves
 
-    def check_for_check(self, color):
-        # Find the position of the king of the given color
-        king_position = None
-        for pos, piece in self.pieces.items():
-            if piece == f"{color}_king":
-                king_position = pos
-                break
-        if not king_position:
-            return False
+    def send_move(self, from_pos, to_pos):
+        move = f"{from_pos[0]},{from_pos[1]}:{to_pos[0]},{to_pos[1]}"
+        self.network.send(move.encode())
 
-        # Check if any of the opponent's pieces can move to the king's position
-        opponent_color = "white" if color == "black" else "black"
-        for pos, piece in self.pieces.items():
-            if piece.split("_")[0] == opponent_color:
-                moves = self.Calculate_moves(piece, pos)
-                if king_position in self.validMoves(piece, pos, moves):
-                    return True
-        return False
+    def receive_moves(self):
+        while True:
+            try:
+                message = self.network.recv(1024).decode()
+                if message == "start":
+                    self.waiting_label.place_forget()
+                elif message in ["white", "black"]:
+                    self.color = message
+                elif message:
+                    from_pos, to_pos = message.split(":")
+                    from_pos = tuple(map(int, from_pos.split(",")))
+                    to_pos = tuple(map(int, to_pos.split(",")))
+                    self.move_piece(from_pos, to_pos)
+                    self.refresh_board()
+            except:
+                break
+
+def connect_to_server():
+    network = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    network.connect(("127.0.0.1", 5555))
+    return network
 
 if __name__ == "__main__":
+    network = connect_to_server()
+    color = network.recv(1024).decode()
     root = tk.Tk()
-    board = ChessBoard(root)
+    board = ChessBoard(root, network, color)
     board.pack(side="top", fill="both", expand=True)
     root.mainloop()
