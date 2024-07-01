@@ -19,7 +19,7 @@ class ChessApp(tk.Tk):
         for F in (MainMenu, ChessBoard):
             page_name = F.__name__
             if F == ChessBoard:
-                frame = F(parent=self.container)  # ChessBoard n'a pas besoin de controller
+                frame = F(parent=self.container, controller=self)  # Passer self comme contrôleur
                 frame.add_piece('white_king', (4, 7))
                 frame.add_piece('black_king', (4, 0))
                 frame.add_piece('white_queen', (3, 7))

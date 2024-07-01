@@ -4,9 +4,11 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 
 
+
 class ChessBoard(tk.Frame):
-    def __init__(self, parent, rows=8, columns=8, size=64, color1="white", color2="purple"):
+    def __init__(self, parent, controller, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
+        self.controller = controller
         self.rows = rows
         self.columns = columns
         self.size = size
@@ -565,7 +567,13 @@ class ChessBoard(tk.Frame):
         winner = "Black" if winner == "White" else "White"
         message = f"Checkmate! {winner} wins!"
         tk.messagebox.showinfo("Game Over", message)
-        self.quit()
+        self.reset_board()
+        self.controller.show_frame("MainMenu")
+
+    def return_to_main_menu(self):
+        self.pack_forget()
+        self.main_menu.pack(side="top", fill="both", expand=True)
+
 
     def reset_board(self):
         self.pieces.clear()
@@ -573,6 +581,8 @@ class ChessBoard(tk.Frame):
         self.selected_position = None
         self.drag_data = {"x": 0, "y": 0, "item": None}
         self.selection_rectangle = None
+        self.player_color = random.choice(["white", "black"])
+        self.current_turn = "white"
         self.calculated_moves = []
         self.white_points = 0
         self.black_points = 0
@@ -584,9 +594,3 @@ class ChessBoard(tk.Frame):
         self.black_points_label.config(text="")
         self.add_pieces()
         self.refresh_board()
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    board = ChessBoard(root)
-    board.pack(side="top", fill="both", expand=True)
-    root.mainloop()
