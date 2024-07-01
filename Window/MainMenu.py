@@ -12,4 +12,6 @@ class MainMenu(tk.Frame):
         self.play_button.pack(pady=20)
 
     def start_game(self):
+        chess_board_frame = self.controller.frames["ChessBoard"]
+        chess_board_frame.reset_board()
         self.controller.show_frame("ChessBoard")
