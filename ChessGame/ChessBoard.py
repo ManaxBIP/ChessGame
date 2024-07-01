@@ -190,7 +190,9 @@ class ChessBoard(tk.Frame):
                 self.drag_data["y"] = event.y
 
                 print(f"Selected piece: {self.selected_piece} at {position}")
-                self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position, self.Calculate_moves(self.selected_piece, self.selected_position))
+                self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position,
+                                                        self.Calculate_moves(self.selected_piece, self.selected_position))
+                            
             else:
                 self.click_movement(position)
                 self.selected_piece = None
@@ -210,13 +212,12 @@ class ChessBoard(tk.Frame):
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            self.move_piece(self.selected_position, new_position)
-            print(f"Selected position: {self.selected_position}, {new_position}")
+            if self.move_piece(self.selected_position, new_position):
+                self.current_turn = "black" if self.current_turn == "white" else "white"
             self.selected_position = None
             self.calculated_moves = []
             self.update_selection_rectangle()
             self.refresh_board()
-            self.check_for_check()
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -225,6 +226,9 @@ class ChessBoard(tk.Frame):
             self.canvas.move(self.drag_data["item"], delta_x, delta_y)
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
+            offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
+            offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
+            self.draw_move_indicators(offset_x, offset_y)
 
 
     def on_drop(self, event):
@@ -234,13 +238,11 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                self.move_piece(self.selected_position, new_position)
-                if new_position == self.selected_position:
-                    self.selected_piece = new_position
-                else:
-                    self.selected_position = None
-                    self.selected_piece = None
-                    self.calculated_moves = []
+                if self.move_piece(self.selected_position, new_position):
+                    self.current_turn = "black" if self.current_turn == "white" else "white"
+                self.selected_position = None
+                self.selected_piece = None
+                self.calculated_moves = []
 
                 self.update_selection_rectangle()
                 self.refresh_board()
@@ -250,18 +252,27 @@ class ChessBoard(tk.Frame):
 
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
-            if (to_pos in self.calculated_moves):
+            if to_pos in self.validMoves(self.pieces[from_pos], from_pos, self.Calculate_moves(self.pieces[from_pos], from_pos)):
                 captured_piece = self.pieces.pop(to_pos, None)  # Capture piece if present
                 piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
                 self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
                 self.calculated_moves = []
                 if captured_piece:
                     self.capture_piece(captured_piece)
-                    
-                self.current_turn = "black" if self.current_turn == "white" else "white"
+                
+                # Check if the move has placed the current player's king in check
+                if self.check_for_check(self.current_turn):
+                    print("Move is invalid as it leaves king in check")
+                    # Revert the move
+                    self.pieces[from_pos] = self.pieces.pop(to_pos)
+                    if captured_piece:
+                        self.pieces[to_pos] = captured_piece
+                    return False
+                else:
+                    return True
 
             self.refresh_board()
-            return True
+            return False
         return False
 
 
@@ -498,20 +509,23 @@ class ChessBoard(tk.Frame):
 
         return valid_moves
 
-    def check_for_check(self):
-        for color in ['white', 'black']:
-            king_position = next((pos for pos, piece in self.pieces.items() if piece == f"{color}_king"), None)
-            if not king_position:
-                continue
+    def check_for_check(self, color):
+        # Find the position of the king of the given color
+        king_position = None
+        for pos, piece in self.pieces.items():
+            if piece == f"{color}_king":
+                king_position = pos
+                break
+        if not king_position:
+            return False
 
-            opponent_color = 'black' if color == 'white' else 'white'
-            for position, piece in self.pieces.items():
-                if piece.startswith(opponent_color):
-                    moves = self.Calculate_moves(piece, position)
-                    valid_moves = self.validMoves(piece, position, moves)
-                    if king_position in valid_moves:
-                        print(f"Check! {color} king is in check by {piece} at {position}")
-                        return True
+        # Check if any of the opponent's pieces can move to the king's position
+        opponent_color = "white" if color == "black" else "black"
+        for pos, piece in self.pieces.items():
+            if piece.split("_")[0] == opponent_color:
+                moves = self.Calculate_moves(piece, pos)
+                if king_position in self.validMoves(piece, pos, moves):
+                    return True
         return False
 
 if __name__ == "__main__":
