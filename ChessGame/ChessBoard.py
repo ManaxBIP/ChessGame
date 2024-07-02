@@ -29,18 +29,18 @@ class ChessBoard(tk.Frame):
 
         self.sidebar = tk.Frame(self)
         self.sidebar.pack(side="right", fill="y")
-        
+
         self.white_captures_frame = tk.Frame(self.sidebar)
         self.white_captures_frame.pack()
         self.black_captures_frame = tk.Frame(self.sidebar)
         self.black_captures_frame.pack()
-        
+
         self.white_points = 0
         self.black_points = 0
         
         self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
         print(f"Player color: {self.player_color}")
-        
+
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
         self.white_captures_label.pack()
         self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
@@ -163,7 +163,7 @@ class ChessBoard(tk.Frame):
 
         offset_x = (canvas_width - self.columns * self.size) / 2
         offset_y = (canvas_height - self.rows * self.size) / 2
-        
+
         self.draw_board(offset_x, offset_y)
 
     def piece_location(self, event) -> tuple:
@@ -428,7 +428,7 @@ class ChessBoard(tk.Frame):
                     positions_available.append((position[0] - i, position[1] - i))
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
-                       continue
+                        continue
                     else:
                         positions_available_valide.append(pos)
                 positions_available = positions_available_valide
@@ -591,7 +591,6 @@ class ChessBoard(tk.Frame):
 
         return True
 
-
     def show_checkmate_message(self, winner_color):
         winner = "White" if winner_color == "white" else "Black"
         winner = "Black" if winner == "White" else "White"
@@ -624,3 +623,9 @@ class ChessBoard(tk.Frame):
         self.black_points_label.config(text="")
         self.add_pieces()
         self.refresh_board()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    board = ChessBoard(root)
+    board.pack(side="top", fill="both", expand=True)
+    root.mainloop()
