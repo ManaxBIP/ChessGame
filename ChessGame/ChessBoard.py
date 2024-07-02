@@ -4,7 +4,6 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 
 
-
 class ChessBoard(tk.Frame):
     def __init__(self, parent, controller, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -182,33 +181,34 @@ class ChessBoard(tk.Frame):
 
     def on_click(self, event):
         position = self.piece_location(event)
-
-        if position in self.pieces:
-            if not self.selected_piece:
-                if self.pieces[position].split("_")[0] != self.current_turn:
-                    return
-                self.selected_piece = self.pieces[position]
-                self.selected_position = position
-                self.drag_data["item"] = self.canvas.find_withtag("current")
-                self.drag_data["x"] = event.x
-                self.drag_data["y"] = event.y
-
-                print(f"Selected piece: {self.selected_piece} at {position}")
-                self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position,
-                                                        self.Calculate_moves(self.selected_piece, self.selected_position))
-                            
-            else:
+        
+        if self.selected_piece and self.selected_position:
+            if position in self.calculated_moves:
                 self.click_movement(position)
                 self.selected_piece = None
+                self.selected_position = None
+                self.calculated_moves = []
+                self.update_selection_rectangle()
+                self.refresh_board()
+            else:
+                self.selected_piece = None
+                self.selected_position = None
                 self.calculated_moves = []
                 self.update_selection_rectangle()
                 self.refresh_board()
         else:
-            self.click_movement(position)
-            self.selected_piece = None
-            self.calculated_moves = []
-            self.update_selection_rectangle()
-            self.refresh_board()
+            if position in self.pieces:
+                if self.pieces[position].split("_")[0] == self.current_turn:
+                    self.selected_piece = self.pieces[position]
+                    self.selected_position = position
+                    self.drag_data["item"] = self.canvas.find_withtag("current")
+                    self.drag_data["x"] = event.x
+                    self.drag_data["y"] = event.y
+                    self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position,
+                                                            self.Calculate_moves(self.selected_piece, self.selected_position))
+                    self.update_selection_rectangle()
+                    self.draw_move_indicators((self.canvas.winfo_width() - self.columns * self.size) / 2, 
+                                              (self.canvas.winfo_height() - self.rows * self.size) / 2)
 
 
     def click_movement(self, new_position):
@@ -249,9 +249,9 @@ class ChessBoard(tk.Frame):
                     new_position = self.selected_position
                 if self.move_piece(self.selected_position, new_position):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
-                self.selected_position = None
-                self.selected_piece = None
-                self.calculated_moves = []
+                # self.selected_position = None
+                # self.selected_piece = None
+                # self.calculated_moves = []
 
                 self.update_selection_rectangle()
                 self.refresh_board()
@@ -286,6 +286,8 @@ class ChessBoard(tk.Frame):
                     if self.check_for_checkmate("black" if self.current_turn == "white" else "white"):
                         winner_color = "white" if self.current_turn == "black" else "black"
                         self.show_checkmate_message(winner_color)
+                    self.selected_position = None
+                    self.selected_piece = None
                     return True
 
             self.refresh_board()
@@ -549,7 +551,6 @@ class ChessBoard(tk.Frame):
         return valid_moves
 
     def check_for_check(self, color):
-        # Find the position of the king of the given color
         king_position = None
         for pos, piece in self.pieces.items():
             if piece == f"{color}_king":
