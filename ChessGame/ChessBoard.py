@@ -29,10 +29,23 @@ class ChessBoard(tk.Frame):
         self.sidebar = tk.Frame(self)
         self.sidebar.pack(side="right", fill="y")
 
-        self.white_captures_frame = tk.Frame(self.sidebar)
-        self.white_captures_frame.pack()
+
+        self.black_captures_label = tk.Label(self.sidebar, text="Black Captures")
+        self.black_captures_label.pack(side="top")
+        self.white_captures_label = tk.Label(self.sidebar, text="White Captures")
+        self.white_captures_label.pack(side="bottom")
+
+
         self.black_captures_frame = tk.Frame(self.sidebar)
-        self.black_captures_frame.pack()
+        self.black_captures_frame.pack(pady=(10, 10), side="top")
+        self.white_captures_frame = tk.Frame(self.sidebar)
+        self.white_captures_frame.pack(pady=(10, 10), side="bottom")
+
+
+        self.white_points_label = tk.Label(self.sidebar, text="White Points: 0")
+        self.white_points_label.pack(pady=(10, 0), side="top")
+        self.black_points_label = tk.Label(self.sidebar, text="Black Points: 0")
+        self.black_points_label.pack(pady=(10, 0), side="bottom")
 
         self.white_points = 0
         self.black_points = 0
@@ -40,15 +53,15 @@ class ChessBoard(tk.Frame):
         self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
         print(f"Player color: {self.player_color}")
 
-        self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
-        self.white_captures_label.pack()
-        self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
-        self.black_captures_label.pack()
 
-        self.white_points_label = tk.Label(self.sidebar, text="")
-        self.white_points_label.pack()
-        self.black_points_label = tk.Label(self.sidebar, text="")
-        self.black_points_label.pack()
+
+
+        self.turn_label = tk.Label(self.sidebar, text="Turn: White")
+        self.turn_label.pack(pady=(20, 0))
+
+        # Initialize captures lists
+        self.white_captures = []
+        self.black_captures = []
 
         self.canvas.bind("<Configure>", self.refresh_board)
         self.canvas.bind("<ButtonPress-1>", self.on_click)
@@ -222,6 +235,7 @@ class ChessBoard(tk.Frame):
                 new_position = self.selected_position
             if self.move_piece(self.selected_position, new_position):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
+                self.turn_label.config(text=f"Turn: {self.current_turn.capitalize()}")
             self.selected_position = None
             self.calculated_moves = []
             self.update_selection_rectangle()
@@ -251,6 +265,7 @@ class ChessBoard(tk.Frame):
                     new_position = self.selected_position
                 if self.move_piece(self.selected_position, new_position):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
+                    self.turn_label.config(text=f"Turn: {self.current_turn.capitalize()}")
                 # self.selected_position = None
                 # self.selected_piece = None
                 # self.calculated_moves = []
