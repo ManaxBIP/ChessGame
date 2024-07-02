@@ -248,7 +248,7 @@ class ChessBoard(tk.Frame):
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            if self.move_piece(self.selected_position, new_position, False):
+            if self.move_piece(self.selected_position, new_position):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
             self.selected_position = None
             self.calculated_moves = []
@@ -288,9 +288,8 @@ class ChessBoard(tk.Frame):
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
-    def move_piece(self, from_pos, to_pos, logToCsv=True):
-        if logToCsv:
-            self.record_move(from_pos, to_pos)
+    def move_piece(self, from_pos, to_pos):
+        self.record_move(from_pos, to_pos)
         if from_pos in self.pieces:
             if to_pos in self.validMoves(self.pieces[from_pos], from_pos,
                                          self.Calculate_moves(self.pieces[from_pos], from_pos)):
