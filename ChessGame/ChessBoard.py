@@ -1,6 +1,8 @@
 import random
 import tkinter as tk
 from tkinter import messagebox
+import os
+import pandas as pd
 from PIL import Image, ImageTk
 
 
@@ -58,6 +60,32 @@ class ChessBoard(tk.Frame):
         self.current_turn = "white"  # Initial turn set to white
 
         self.add_pieces()
+
+        self.csv_file = "chess_game_data.csv"
+        if not os.path.exists(self.csv_file):
+            self.initialize_csv()
+
+    def initialize_csv(self):
+        df = pd.DataFrame(columns=["Turn", "Piece", "Move", "From Position", "To Position", "White Score", "Black Score", "Evaluation"])
+        df.to_csv(self.csv_file, index=False)
+
+
+    def record_move(self, from_position, to_position):
+        df = pd.read_csv(self.csv_file)
+        print(from_position, to_position)
+        new_row = {
+            "Turn": self.current_turn,
+            "Piece": self.pieces[from_position].split("_")[1],
+            "Move": f"{from_position} -> {to_position}",
+            "From Position": from_position,
+            "To Position": to_position,
+            "White Score": self.white_points,
+            "Black Score": self.black_points,
+            "Evaluation": self.evaluate_move(from_position, to_position)
+        }
+        df = df._append(new_row, ignore_index=True)
+        df.to_csv(self.csv_file, index=False)
+    
 
     def load_pieces(self):
         piece_names = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
@@ -220,7 +248,7 @@ class ChessBoard(tk.Frame):
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            if self.move_piece(self.selected_position, new_position):
+            if self.move_piece(self.selected_position, new_position, False):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
             self.selected_position = None
             self.calculated_moves = []
@@ -260,7 +288,9 @@ class ChessBoard(tk.Frame):
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
-    def move_piece(self, from_pos, to_pos):
+    def move_piece(self, from_pos, to_pos, logToCsv=True):
+        if logToCsv:
+            self.record_move(from_pos, to_pos)
         if from_pos in self.pieces:
             if to_pos in self.validMoves(self.pieces[from_pos], from_pos,
                                          self.Calculate_moves(self.pieces[from_pos], from_pos)):
@@ -290,11 +320,57 @@ class ChessBoard(tk.Frame):
                         self.show_checkmate_message(winner_color)
                     self.selected_position = None
                     self.selected_piece = None
-                    return True
-
+                    return True        
+            
             self.refresh_board()
             return False
         return False
+
+    def evaluate_move(self, from_pos, to_pos):
+        score = 0
+        print(f"Evaluating move from {from_pos} to {to_pos}")
+        # 1. Matériel
+        captured_piece = self.pieces.get(to_pos)
+        piece_values = {
+            'pawn': 1,
+            'knight': 3,
+            'bishop': 3,
+            'rook': 5,
+            'queen': 9,
+            'king': 0  # Le roi n'a pas de valeur car sa capture signifie la fin du jeu
+        }
+
+        if captured_piece:
+            captured_piece_value = piece_values[captured_piece.split('_')[1]]
+            score += captured_piece_value * 2  # Capturer une pièce vaut double sa valeur
+
+        # 2. Contrôle du centre
+        center_squares = [(3, 3), (3, 4), (4, 3), (4, 4)]
+        if to_pos in center_squares:
+            score += 1  # Contrôler une case centrale vaut 1 point
+
+        # 4. Développement des pièces
+        piece = self.pieces[from_pos]
+        if piece.split('_')[1] in ['knight', 'bishop']:
+            if from_pos[1] == 1 and piece.split('_')[0] == 'white':
+                score += 1  # Développer une pièce mineure au début du jeu vaut 1 point
+            if from_pos[1] == 6 and piece.split('_')[0] == 'black':
+                score += 1  # Développer une pièce mineure au début du jeu vaut 1 point
+
+        # 5. Possibilité de mise en échec
+        original_piece = self.pieces.get(to_pos)
+        self.pieces[to_pos] = self.pieces.pop(from_pos)
+        if self.check_for_check("black" if self.current_turn == "white" else "white"):
+            score += 3  # Mettre le roi adverse en échec vaut 3 points
+            if self.check_for_checkmate("black" if self.current_turn == "white" else "white"):
+                score += 10  # Mettre le roi adverse en échec et mat vaut 10 points
+        self.pieces[from_pos] = self.pieces.pop(to_pos)
+        if original_piece:
+            self.pieces[to_pos] = original_piece
+
+        return score
+
+
 
     def promote_pawn(self, position):
         promotion_window = tk.Toplevel(self)
