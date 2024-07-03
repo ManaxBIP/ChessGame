@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import messagebox
 import os
 import pandas as pd
+import numpy as np
 from PIL import Image, ImageTk
 
 
@@ -59,6 +60,14 @@ class ChessBoard(tk.Frame):
 
         self.current_turn = "white"  # Initial turn set to white
 
+        self.black_moves = []
+        self.white_moves = []
+
+        self.moves_of_game = {
+            "white": self.white_moves,
+            "black": self.black_moves
+        }
+
         self.add_pieces()
 
         self.csv_file = "chess_game_data.csv"
@@ -66,22 +75,27 @@ class ChessBoard(tk.Frame):
             self.initialize_csv()
 
     def initialize_csv(self):
-        df = pd.DataFrame(columns=["Turn", "Piece", "Move", "From Position", "To Position", "White Score", "Black Score", "Evaluation"])
+        df = pd.DataFrame(columns=["Player Color", "IA Color", "Moves", "White Score", "Black Score", "Result"])    
         df.to_csv(self.csv_file, index=False)
 
+    def record_move(self, from_pos, to_pos):
+        move = [from_pos, to_pos]
+        if self.current_turn == "white":
+            self.white_moves.append({"Move": move, "Value": self.evaluate_move(from_pos, to_pos)})
+        else:
+            self.black_moves.append({"Move": move, "Value": self.evaluate_move(from_pos, to_pos)})
+                                                                                
 
-    def record_move(self, from_position, to_position):
+
+    def record_game(self, moves, result):
         df = pd.read_csv(self.csv_file)
-        print(from_position, to_position)
         new_row = {
-            "Turn": self.current_turn,
-            "Piece": self.pieces[from_position].split("_")[1],
-            "Move": f"{from_position} -> {to_position}",
-            "From Position": from_position,
-            "To Position": to_position,
+            "Player Color": self.player_color,
+            "IA Color": "black" if self.player_color == "white" else "white",
+            "Moves": moves,
             "White Score": self.white_points,
             "Black Score": self.black_points,
-            "Evaluation": self.evaluate_move(from_position, to_position)
+            "Result": result
         }
         df = df._append(new_row, ignore_index=True)
         df.to_csv(self.csv_file, index=False)
@@ -255,6 +269,9 @@ class ChessBoard(tk.Frame):
             self.update_selection_rectangle()
             self.refresh_board()
 
+            if self.current_turn != self.player_color:
+                self.after(1000, self.ai_move)
+
     def on_drag(self, event):
         if self.drag_data["item"]:
             delta_x = event.x - self.drag_data["x"]
@@ -277,7 +294,7 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                if self.move_piece(self.selected_position, new_position):
+                if self.move_piece(self.selected_position, new_position, False):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
                 # self.selected_position = None
                 # self.selected_piece = None
@@ -288,8 +305,10 @@ class ChessBoard(tk.Frame):
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
-    def move_piece(self, from_pos, to_pos):
-        self.record_move(from_pos, to_pos)
+    def move_piece(self, from_pos, to_pos, record=True):
+        if record:
+            self.record_move(from_pos, to_pos)
+
         if from_pos in self.pieces:
             if to_pos in self.validMoves(self.pieces[from_pos], from_pos,
                                          self.Calculate_moves(self.pieces[from_pos], from_pos)):
@@ -320,10 +339,35 @@ class ChessBoard(tk.Frame):
                     self.selected_position = None
                     self.selected_piece = None
                     return True        
-            
             self.refresh_board()
             return False
         return False
+    
+    def ai_move(self):
+        """
+        Execute a move for the AI player.
+        """
+        if self.current_turn != self.player_color:
+            possible_moves = []
+            for pos, piece in self.pieces.items():
+                if piece.split("_")[0] == self.current_turn:
+                    valid_moves = self.validMoves(piece, pos, self.Calculate_moves(piece, pos))
+                    for move in valid_moves:
+                        move_score = self.evaluate_move(pos, move)
+                        possible_moves.append((move_score, pos, move))
+
+            if possible_moves:
+                # Trier les mouvements par score de manière décroissante
+                possible_moves.sort(reverse=True, key=lambda x: x[0])
+                best_move = possible_moves[0]  # Choisir le meilleur mouvement
+                from_pos, to_pos = best_move[1], best_move[2]
+
+                self.move_piece(from_pos, to_pos, True)
+                self.current_turn = "white" if self.current_turn == "black" else "black"
+                self.refresh_board()
+                self.check_for_checkmate(self.current_turn)
+
+            
 
     def evaluate_move(self, from_pos, to_pos):
         score = 0
@@ -368,6 +412,8 @@ class ChessBoard(tk.Frame):
             self.pieces[to_pos] = original_piece
 
         return score
+    
+
 
 
 
@@ -672,6 +718,8 @@ class ChessBoard(tk.Frame):
         winner = "Black" if winner == "White" else "White"
         message = f"Checkmate! {winner} wins!"
         tk.messagebox.showinfo("Game Over", message)
+        winnerRecord = "1-0" if winner == "White" else "0-1"
+        self.record_game(self.moves_of_game, winnerRecord)
         self.reset_board()
         self.controller.show_frame("MainMenu")
 
