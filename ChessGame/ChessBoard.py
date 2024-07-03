@@ -3,8 +3,6 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 
-
-
 class ChessBoard(tk.Frame):
     def __init__(self, parent, controller, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -243,13 +241,9 @@ class ChessBoard(tk.Frame):
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
                 if self.move_piece(self.selected_position, new_position):
-                    self.current_turn = "black" if self.current_turn == "white" else "white"
-                self.selected_position = None
-                self.selected_piece = None
-                self.calculated_moves = []
-
-                self.update_selection_rectangle()
-                self.refresh_board()
+                    self.update_selection_rectangle()
+                    self.refresh_board()
+                    self.check_for_draw(self.current_turn)
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
@@ -277,10 +271,19 @@ class ChessBoard(tk.Frame):
                     if piece_to_move.split("_")[1] == "pawn" and (to_pos[1] == 0 or to_pos[1] == 7):
                         self.promote_pawn(to_pos)
 
-                    # Check for checkmate after a valid move
-                    if self.check_for_checkmate("black" if self.current_turn == "white" else "white"):
-                        winner_color = "white" if self.current_turn == "black" else "black"
-                        self.show_checkmate_message(winner_color)
+                    # Vérifier le mat, le pat ou le matériel insuffisant après un coup valide
+                    opponent_color = "black" if self.current_turn == "white" else "white"
+                    if self.check_for_checkmate(opponent_color):
+                        self.show_checkmate_message(self.current_turn)
+                    elif self.check_for_draw(opponent_color):
+                        pass  # Le match nul est déjà géré dans check_for_draw()
+                    # else:
+                    #     # Alterner le tour seulement si le jeu continue
+                    #     self.current_turn = opponent_color
+                    #     print(f"Turn changed to: {self.current_turn}")
+
+                    self.selected_position = None
+                    self.selected_piece = None
                     return True
 
             self.refresh_board()
@@ -298,7 +301,6 @@ class ChessBoard(tk.Frame):
 
         def promote(piece_type):
             color = "white" if self.current_turn == "white" else "black"
-            color = "black" if color == "white" else "white"
             self.pieces[position] = f"{color}_{piece_type}"
             self.refresh_board()
             promotion_window.destroy()
@@ -470,7 +472,7 @@ class ChessBoard(tk.Frame):
                         positions_available_valide.append(pos)
                 pass
             case _:
-                print("Invalid piece name")
+                print("Nom de pièce invalide")
         return positions_available_valide
     
     def validMoves(self, piece, position, calculateMoves: list) -> list:
@@ -488,7 +490,7 @@ class ChessBoard(tk.Frame):
 
         for move in calculateMoves:
             if piece_name in ["rook", "queen"]:
-                if move[0] == position[0]:  # Vertical move
+                if move[0] == position[0]:  # Déplacement vertical
                     step = (0, 1) if move[1] > position[1] else (0, -1)
                     if is_clear_path(position, move, step):
                         if move in self.pieces:
@@ -496,7 +498,7 @@ class ChessBoard(tk.Frame):
                                 valid_moves.append(move)
                         else:
                             valid_moves.append(move)
-                elif move[1] == position[1]:  # Horizontal move
+                elif move[1] == position[1]:  # Déplacement horizontal
                     step = (1, 0) if move[0] > position[0] else (-1, 0)
                     if is_clear_path(position, move, step):
                         if move in self.pieces:
@@ -507,7 +509,7 @@ class ChessBoard(tk.Frame):
             if piece_name in ["bishop", "queen"]:
                 step_x = 1 if move[0] > position[0] else -1
                 step_y = 1 if move[1] > position[1] else -1
-                if abs(move[0] - position[0]) == abs(move[1] - position[1]):  # Diagonal move
+                if abs(move[0] - position[0]) == abs(move[1] - position[1]):  # Déplacement diagonal
                     if is_clear_path(position, move, (step_x, step_y)):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
@@ -519,8 +521,8 @@ class ChessBoard(tk.Frame):
                 start_row = 6 if piece_color == "white" else 1
 
                 if move not in self.pieces:
-                    if move[0] == position[0]:  # Forward move
-                        if move[1] == position[1] + direction:  # One step forward
+                    if move[0] == position[0]:  # Déplacement vers l'avant
+                        if move[1] == position[1] + direction:  # Un pas en avant
                             valid_moves.append(move)
                         elif (move[1] == position[1] + 2 * direction and
                             position[1] == start_row and
@@ -552,7 +554,7 @@ class ChessBoard(tk.Frame):
         if not king_position:
             return False
 
-        # Check if any of the opponent's pieces can move to the king's position
+        # Vérifiez si l'une des pièces de l'adversaire peut se déplacer vers la position du roi
         opponent_color = "white" if color == "black" else "black"
         for pos, piece in self.pieces.items():
             if piece.split("_")[0] == opponent_color:
@@ -562,11 +564,11 @@ class ChessBoard(tk.Frame):
         return False
 
     def check_for_checkmate(self, color):
-        # Check if the player is in checkmate
+        # Vérifiez si le joueur est en échec et mat
         if not self.check_for_check(color):
             return False
 
-        pieces_copy = list(self.pieces.items())  # Create a copy of the items to avoid RuntimeError
+        pieces_copy = list(self.pieces.items())  # Créez une copie des éléments pour éviter RuntimeError
 
         for pos, piece in pieces_copy:
             if piece.split("_")[0] == color:
@@ -585,19 +587,58 @@ class ChessBoard(tk.Frame):
 
         return True
 
+    def check_for_stalemate(self, color):
+        if self.check_for_check(color):
+            return False  # Pas de pat si le joueur est en échec
 
-    def show_checkmate_message(self, winner_color):
-        winner = "White" if winner_color == "white" else "Black"
-        winner = "Black" if winner == "White" else "White"
-        message = f"Checkmate! {winner} wins!"
-        tk.messagebox.showinfo("Game Over", message)
+        for pos, piece in self.pieces.items():
+            if piece.split("_")[0] == color:
+                valid_moves = self.validMoves(piece, pos, self.Calculate_moves(piece, pos))
+                if valid_moves:
+                    return False  # Pas de pat si le joueur a des mouvements valides
+
+        return True  # Pat si aucune pièce du joueur n'a de mouvements valides
+
+    def check_for_insufficient_material(self):
+        remaining_pieces = list(self.pieces.values())
+        if len(remaining_pieces) == 2:
+            return True  # Roi contre roi
+
+        if len(remaining_pieces) == 3:
+            piece_types = [piece.split("_")[1] for piece in remaining_pieces]
+            if "king" in piece_types and ("bishop" in piece_types or "knight" in piece_types):
+                return True  # Roi et fou ou roi et cavalier contre roi
+
+        if len(remaining_pieces) == 4:
+            piece_types = [piece.split("_")[1] for piece in remaining_pieces]
+            if piece_types.count("bishop") == 2:
+                return True  # Roi et deux fous de couleurs opposées contre roi
+
+        return False
+
+    def check_for_draw(self, color):
+        if self.check_for_stalemate(color):
+            self.show_draw_message("Pat")
+            return True
+
+        if self.check_for_insufficient_material():
+            self.show_draw_message("Matériel insuffisant")
+            return True
+
+        return False
+
+    def show_draw_message(self, reason):
+        message = f"Égalité due à {reason}!"
+        tk.messagebox.showinfo("Jeu Terminé", message)
         self.reset_board()
         self.controller.show_frame("MainMenu")
 
-    def return_to_main_menu(self):
-        self.pack_forget()
-        self.main_menu.pack(side="top", fill="both", expand=True)
-
+    def show_checkmate_message(self, winner_color):
+        winner = "Blanc" if winner_color == "white" else "Noir"
+        message = f"Échec et mat! {winner} gagne!"
+        tk.messagebox.showinfo("Jeu Terminé", message)
+        self.reset_board()
+        self.controller.show_frame("MainMenu")
 
     def reset_board(self):
         self.pieces.clear()
