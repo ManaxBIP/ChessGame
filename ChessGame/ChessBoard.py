@@ -184,7 +184,7 @@ class ChessBoard(tk.Frame):
 
             self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
                                      tags=("piece", position))
-
+        
         self.draw_move_indicators(offset_x, offset_y)
         self.update_selection_rectangle(offset_x, offset_y)
 
@@ -262,15 +262,15 @@ class ChessBoard(tk.Frame):
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
-            if self.move_piece(self.selected_position, new_position):
+            if self.move_piece(self.selected_position, new_position, True):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
+                if self.current_turn != self.player_color:
+                    self.after(100, self.ai_move)
             self.selected_position = None
             self.calculated_moves = []
             self.update_selection_rectangle()
             self.refresh_board()
 
-            if self.current_turn != self.player_color:
-                self.after(1000, self.ai_move)
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -294,12 +294,13 @@ class ChessBoard(tk.Frame):
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
-                if self.move_piece(self.selected_position, new_position, False):
+                if self.move_piece(self.selected_position, new_position, True):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
+                    if self.current_turn != self.player_color:
+                        self.after(100, self.ai_move)
                 # self.selected_position = None
                 # self.selected_piece = None
                 # self.calculated_moves = []
-
                 self.update_selection_rectangle()
                 self.refresh_board()
 
@@ -308,14 +309,13 @@ class ChessBoard(tk.Frame):
     def move_piece(self, from_pos, to_pos, record=True):
         if record:
             self.record_move(from_pos, to_pos)
-
         if from_pos in self.pieces:
-            if to_pos in self.validMoves(self.pieces[from_pos], from_pos,
-                                         self.Calculate_moves(self.pieces[from_pos], from_pos)):
+            if to_pos in self.validMoves(self.pieces[from_pos], from_pos, self.Calculate_moves(self.pieces[from_pos], from_pos)):
                 captured_piece = self.pieces.pop(to_pos, None)  # Capture piece if present
                 piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
                 self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
                 self.calculated_moves = []
+
                 if captured_piece:
                     self.capture_piece(captured_piece)
 
@@ -338,10 +338,11 @@ class ChessBoard(tk.Frame):
                         self.show_checkmate_message(winner_color)
                     self.selected_position = None
                     self.selected_piece = None
-                    return True        
+                    return True
             self.refresh_board()
             return False
         return False
+
     
     def ai_move(self):
         """
@@ -349,7 +350,9 @@ class ChessBoard(tk.Frame):
         """
         if self.current_turn != self.player_color:
             possible_moves = []
-            for pos, piece in self.pieces.items():
+            pieces_copy = list(self.pieces.items())  # Créer une copie des items
+
+            for pos, piece in pieces_copy:
                 if piece.split("_")[0] == self.current_turn:
                     valid_moves = self.validMoves(piece, pos, self.Calculate_moves(piece, pos))
                     for move in valid_moves:
@@ -362,10 +365,11 @@ class ChessBoard(tk.Frame):
                 best_move = possible_moves[0]  # Choisir le meilleur mouvement
                 from_pos, to_pos = best_move[1], best_move[2]
 
-                self.move_piece(from_pos, to_pos, True)
+                self.move_piece(from_pos, to_pos)
                 self.current_turn = "white" if self.current_turn == "black" else "black"
                 self.refresh_board()
                 self.check_for_checkmate(self.current_turn)
+
 
             
 
