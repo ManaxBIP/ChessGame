@@ -265,7 +265,7 @@ class ChessBoard(tk.Frame):
             if self.move_piece(self.selected_position, new_position, True):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
                 if self.current_turn != self.player_color:
-                    self.after(100, self.ai_move)
+                    self.after(1000, self.ai_move)
             self.selected_position = None
             self.calculated_moves = []
             self.update_selection_rectangle()
@@ -297,7 +297,7 @@ class ChessBoard(tk.Frame):
                 if self.move_piece(self.selected_position, new_position, True):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
                     if self.current_turn != self.player_color:
-                        self.after(100, self.ai_move)
+                        self.after(1000, self.ai_move)
                 # self.selected_position = None
                 # self.selected_piece = None
                 # self.calculated_moves = []
