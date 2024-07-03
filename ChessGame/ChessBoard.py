@@ -244,6 +244,7 @@ class ChessBoard(tk.Frame):
                     self.update_selection_rectangle()
                     self.refresh_board()
                     self.check_for_draw(self.current_turn)
+                    self.current_turn = "black" if self.current_turn == "white" else "white"
 
             self.drag_data = {"x": 0, "y": 0, "item": None}
 
