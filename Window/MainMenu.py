@@ -14,13 +14,24 @@ class MainMenu(tk.Frame):
         self.play_button = tk.Button(self, text="Play vs IA", font=("Helvetica", 14), command=self.start_game)
         self.play_button.pack(pady=20)
 
+        self.play_ia_vs_ia_button = tk.Button(self, text="IA vs IA", font=("Helvetica", 14), command=self.start_ia_vs_ia)
+        self.play_ia_vs_ia_button.pack(pady=20)
+
         self.stats_button = tk.Button(self, text="Statistiques", font=("Helvetica", 14), command=self.show_statistics)
         self.stats_button.pack(pady=20)
 
     def start_game(self):
         chess_board_frame = self.controller.frames["ChessBoard"]
         chess_board_frame.reset_board()
+        chess_board_frame.set_mode("player_vs_ia")
         self.controller.show_frame("ChessBoard")
+
+    def start_ia_vs_ia(self):
+        chess_board_frame = self.controller.frames["ChessBoard"]
+        chess_board_frame.reset_board()
+        chess_board_frame.set_mode("ia_vs_ia")
+        self.controller.show_frame("ChessBoard")
+        chess_board_frame.start_ia_vs_ia_game()
 
     def show_statistics(self):
         # Create a new window for displaying statistics
@@ -57,5 +68,3 @@ class MainMenu(tk.Frame):
         canvas = FigureCanvasTkAgg(fig, master=stats_window)
         canvas.draw()
         canvas.get_tk_widget().pack()
-
-# Assuming ChessBoard class is defined as above and contains the correct logic.

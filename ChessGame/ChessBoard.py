@@ -22,6 +22,7 @@ class ChessBoard(tk.Frame):
         self.drag_data = {"x": 0, "y": 0, "item": None}
         self.selection_rectangle = None
         self.calculated_moves = np.array([])
+        self.mode = "player_vs_ia"  # Default mode
 
         self.piece_images = {}
         self.load_pieces()
@@ -87,6 +88,19 @@ class ChessBoard(tk.Frame):
     def initialize_csv(self):
         df = pd.DataFrame(columns=["Player Color", "IA Color", "Moves", "White Score", "Black Score", "Result"])
         df.to_csv(self.csv_file, index=False)
+
+    def set_mode(self, mode):
+        self.mode = mode
+
+    def start_ia_vs_ia_game(self):
+        self.after(1000, self.ia_vs_ia_turn)
+
+    def ia_vs_ia_turn(self):
+        if self.mode == "ia_vs_ia":
+            self.ai_move()
+            if self.check_for_checkmate("white") or self.check_for_checkmate("black"):
+                return
+            self.after(1000, self.ia_vs_ia_turn)
 
     def record_move(self, from_pos, to_pos):
         move = [from_pos, to_pos]
@@ -213,7 +227,7 @@ class ChessBoard(tk.Frame):
         offset_y = (canvas_height - self.rows * self.size) / 2
 
         self.draw_board(offset_x, offset_y)
-        if self.current_turn != self.player_color:
+        if self.current_turn != self.player_color and self.mode != "ia_vs_ia":
             self.after(1000, self.ai_move)
 
     def piece_location(self, event) -> tuple:
@@ -230,6 +244,9 @@ class ChessBoard(tk.Frame):
         return col, row
 
     def on_click(self, event):
+        if self.mode == "ia_vs_ia":
+            return  # Do nothing in IA vs IA mode
+
         position = self.piece_location(event)
 
         if self.current_turn == self.player_color:
@@ -275,6 +292,9 @@ class ChessBoard(tk.Frame):
             self.refresh_board()
 
     def on_drag(self, event):
+        if self.mode == "ia_vs_ia":
+            return  # Do nothing in IA vs IA mode
+
         if self.drag_data["item"] and self.current_turn == self.player_color:
             delta_x = event.x - self.drag_data["x"]
             delta_y = event.y - self.drag_data["y"]
@@ -287,6 +307,9 @@ class ChessBoard(tk.Frame):
             self.canvas.tag_raise(self.drag_data["item"])
 
     def on_drop(self, event):
+        if self.mode == "ia_vs_ia":
+            return  # Do nothing in IA vs IA mode
+
         if self.drag_data["item"] and self.current_turn == self.player_color:
             new_position = self.piece_location(event)
             if self.selected_piece:
@@ -381,7 +404,7 @@ class ChessBoard(tk.Frame):
         return True
 
     def ai_move(self):
-        if self.current_turn != self.player_color:
+        if self.current_turn != self.player_color or self.mode == "ia_vs_ia":
             similar_games = self.analyze_csv()
             evaluation_adjustments = self.adjust_move_evaluation(similar_games)
             
@@ -426,6 +449,8 @@ class ChessBoard(tk.Frame):
                 self.current_turn = "white" if self.current_turn == "black" else "black"
                 self.refresh_board()
                 self.check_for_checkmate(self.current_turn)
+                if self.mode == "ia_vs_ia":
+                    self.after(1000, self.ia_vs_ia_turn)
 
 
     def evaluate_move(self, from_pos, to_pos):
@@ -472,7 +497,7 @@ class ChessBoard(tk.Frame):
         return score
 
     def promote_pawn(self, position):
-        if self.current_turn != self.player_color:  # Promotion automatique à la dame pour l'IA
+        if self.current_turn != self.player_color or self.mode == "ia_vs_ia":  # Promotion automatique à la dame pour l'IA
             self.pieces[position] = f"{self.current_turn}_queen"
             self.refresh_board()
             return
@@ -545,7 +570,7 @@ class ChessBoard(tk.Frame):
                 offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
             col, row = self.selected_position
             if self.player_color == "black":
-                col = self.columns - 1 - col
+                col =  self.columns - 1 - col
                 row = self.rows - 1 - row
             x1 = offset_x + col * self.size
             y1 = offset_y + row * self.size
@@ -861,14 +886,17 @@ class ChessBoard(tk.Frame):
                     break
 
             if match_count > 0:
-                similar_games.append((match_count, moves, result))
+                similarity_score = match_count / max(len(moves[self.current_turn]), len(current_moves))
+                similar_games.append((similarity_score, moves, result))
 
         return similar_games
 
     def adjust_move_evaluation(self, similar_games):
         evaluation_adjustments = {}
-        for match_count, moves, result in similar_games:
-            for move_data in moves[self.current_turn][match_count:]:
+        weight_factor = 0.5  # Weight factor for the influence of similar games
+
+        for similarity_score, moves, result in similar_games:
+            for move_data in moves[self.current_turn][int(similarity_score * len(moves[self.current_turn])):]:
                 move = tuple(move_data["Move"])
                 value = move_data["Value"]
 
@@ -876,13 +904,14 @@ class ChessBoard(tk.Frame):
                     evaluation_adjustments[move] = 0
 
                 if result == "1-0" and self.current_turn == "white":
-                    evaluation_adjustments[move] += value
+                    evaluation_adjustments[move] += value * similarity_score * weight_factor
                 elif result == "0-1" and self.current_turn == "black":
-                    evaluation_adjustments[move] += value
+                    evaluation_adjustments[move] += value * similarity_score * weight_factor
                 else:
-                    evaluation_adjustments[move] -= value
+                    evaluation_adjustments[move] -= value * similarity_score * weight_factor
 
         return evaluation_adjustments
+
 
     def show_draw_message(self, reason):
         message = f"Égalité due à {reason}!"
