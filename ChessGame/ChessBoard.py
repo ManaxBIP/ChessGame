@@ -93,14 +93,15 @@ class ChessBoard(tk.Frame):
         self.mode = mode
 
     def start_ia_vs_ia_game(self):
-        self.after(1000, self.ia_vs_ia_turn)
+        self.current_turn = "white"
+        self.mode = "ia_vs_ia"
+        self.play_ia_vs_ia()
 
-    def ia_vs_ia_turn(self):
+    def play_ia_vs_ia(self):
         if self.mode == "ia_vs_ia":
             self.ai_move()
-            if self.check_for_checkmate("white") or self.check_for_checkmate("black"):
-                return
-            self.after(1000, self.ia_vs_ia_turn)
+            if not (self.check_for_checkmate("white") or self.check_for_checkmate("black") or self.check_for_draw("white") or self.check_for_draw("black")):
+                self.after(1000, self.play_ia_vs_ia)
 
     def record_move(self, from_pos, to_pos):
         move = [from_pos, to_pos]
@@ -203,6 +204,9 @@ class ChessBoard(tk.Frame):
         if self.current_turn == self.player_color:
             self.draw_move_indicators(offset_x, offset_y)
             self.update_selection_rectangle(offset_x, offset_y)
+            
+        if self.current_turn == self.player_color and self.mode == "ia_vs_ia":
+            self.after(1000, self.ai_move)
 
     def draw_move_indicators(self, offset_x, offset_y):
         self.canvas.delete("move_indicator")
@@ -229,6 +233,7 @@ class ChessBoard(tk.Frame):
         self.draw_board(offset_x, offset_y)
         if self.current_turn != self.player_color and self.mode != "ia_vs_ia":
             self.after(1000, self.ai_move)
+
 
     def piece_location(self, event) -> tuple:
         col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
@@ -451,11 +456,8 @@ class ChessBoard(tk.Frame):
 
                 from_pos, to_pos = best_move[1], best_move[2]
                 self.move_piece(from_pos, to_pos, record=False)  # Désactiver l'enregistrement pour les mouvements IA
-                self.current_turn = "white" if self.current_turn == "black" else "black"
+                self.current_turn = "black" if self.current_turn == "white" else "white"
                 self.refresh_board()
-                self.check_for_checkmate(self.current_turn)
-                if self.mode == "ia_vs_ia":
-                    self.after(1000, self.ia_vs_ia_turn)
 
 
     def evaluate_move(self, from_pos, to_pos):
@@ -502,7 +504,12 @@ class ChessBoard(tk.Frame):
         return score
 
     def promote_pawn(self, position):
-        if self.current_turn != self.player_color or self.mode == "ia_vs_ia":  # Promotion automatique à la dame pour l'IA
+        if self.current_turn != self.player_color:  # Promotion automatique à la dame pour l'IA
+            self.pieces[position] = f"{self.current_turn}_queen"
+            self.refresh_board()
+            return
+        
+        if self.mode == "ia_vs_ia":
             self.pieces[position] = f"{self.current_turn}_queen"
             self.refresh_board()
             return
