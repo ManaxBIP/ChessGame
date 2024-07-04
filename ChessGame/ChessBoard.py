@@ -40,7 +40,7 @@ class ChessBoard(tk.Frame):
         self.white_points = 0
         self.black_points = 0
 
-        self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
+        self.player_color = "white"  # Initialiser une seule fois
         print(f"Player color: {self.player_color}")
 
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
@@ -53,10 +53,6 @@ class ChessBoard(tk.Frame):
         self.black_points_label = tk.Label(self.sidebar, text="")
         self.black_points_label.pack()
 
-        self.canvas.bind("<Configure>", self.refresh_board)
-        self.canvas.bind("<ButtonPress-1>", self.on_click)
-        self.canvas.bind("<B1-Motion>", self.on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.on_drop)
 
         self.current_turn = "white"  # Initial turn set to white
 
@@ -68,6 +64,10 @@ class ChessBoard(tk.Frame):
             "black": self.black_moves
         }
 
+        self.canvas.bind("<Configure>", self.refresh_board)
+        self.canvas.bind("<ButtonPress-1>", self.on_click)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_drop)
         self.add_pieces()
 
         self.csv_file = "chess_game_data.csv"
@@ -362,8 +362,30 @@ class ChessBoard(tk.Frame):
             if possible_moves:
                 # Trier les mouvements par score de manière décroissante
                 possible_moves.sort(reverse=True, key=lambda x: x[0])
-                best_move = possible_moves[0]  # Choisir le meilleur mouvement
-                from_pos, to_pos = best_move[1], best_move[2]
+
+                # Vérifier si le roi est en échec
+                if self.check_for_check(self.current_turn):
+                    # Trouver un mouvement qui sort le roi de l'échec
+                    for move in possible_moves:
+                        from_pos, to_pos = move[1], move[2]
+                        original_piece = self.pieces.get(to_pos)
+                        self.pieces[to_pos] = self.pieces.pop(from_pos)
+                        if not self.check_for_check(self.current_turn):
+                            self.pieces[from_pos] = self.pieces.pop(to_pos)
+                            if original_piece:
+                                self.pieces[to_pos] = original_piece
+                            break
+                        self.pieces[from_pos] = self.pieces.pop(to_pos)
+                        if original_piece:
+                            self.pieces[to_pos] = original_piece
+                    else:
+                        # Si aucun mouvement ne sort le roi de l'échec, choisir le meilleur mouvement disponible
+                        best_move = possible_moves[0]
+                        from_pos, to_pos = best_move[1], best_move[2]
+                else:
+                    # Si le roi n'est pas en échec, choisir le meilleur mouvement disponible
+                    best_move = possible_moves[0]
+                    from_pos, to_pos = best_move[1], best_move[2]
 
                 self.move_piece(from_pos, to_pos)
                 self.current_turn = "white" if self.current_turn == "black" else "black"
