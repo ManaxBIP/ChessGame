@@ -1,7 +1,7 @@
-
 import tkinter as tk
 from ChessGame.ChessBoard import *
 from Window.MainMenu import MainMenu
+
 
 class ChessApp(tk.Tk):
     def __init__(self):
@@ -39,7 +39,7 @@ class ChessApp(tk.Tk):
                 for i in range(8):
                     frame.add_piece('white_pawn', (i, 6))
                     frame.add_piece('black_pawn', (i, 1))
-                
+
             else:
                 frame = F(parent=self.container, controller=self)  # MainMenu a besoin de controller
             self.frames[page_name] = frame
