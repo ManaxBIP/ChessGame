@@ -303,21 +303,22 @@ class ChessBoard(tk.Frame):
     def move_piece(self, from_pos, to_pos, record=True):
         if record:
             self.record_move(from_pos, to_pos)
-        if tuple(from_pos) in self.pieces:
-            piece = self.pieces[tuple(from_pos)]
+        if from_pos in self.pieces:
+            piece = self.pieces[from_pos]
             piece_color = piece.split("_")[0]
             piece_type = piece.split("_")[1]
             
             # Vérifier et effectuer le roque
             if piece_type == "king" and abs(from_pos[0] - to_pos[0]) == 2:
-                self.perform_castling(from_pos, to_pos)
+                if not self.perform_castling(from_pos, to_pos):
+                    return False  # Cannot castle if it puts the king in check
                 return True
 
-            if tuple(to_pos) in self.validMoves(piece, from_pos, self.Calculate_moves(piece, from_pos)):
-                captured_piece = self.pieces.pop(tuple(to_pos), None)
-                piece_to_move = self.pieces.pop(tuple(from_pos))
-                self.pieces[tuple(to_pos)] = piece_to_move
-                self.calculated_moves = np.array([])
+            if to_pos in self.validMoves(piece, from_pos, self.Calculate_moves(piece, from_pos)):
+                captured_piece = self.pieces.pop(to_pos, None)
+                piece_to_move = self.pieces.pop(from_pos)
+                self.pieces[to_pos] = piece_to_move
+                self.calculated_moves = []
                 if captured_piece:
                     self.capture_piece(captured_piece)
 
@@ -333,9 +334,9 @@ class ChessBoard(tk.Frame):
                 # Vérifier si le mouvement laisse le roi en échec
                 if self.check_for_check(self.current_turn):
                     # Revenir en arrière si le roi est en échec
-                    self.pieces[tuple(from_pos)] = self.pieces.pop(tuple(to_pos))
+                    self.pieces[from_pos] = self.pieces.pop(to_pos)
                     if captured_piece:
-                        self.pieces[tuple(to_pos)] = captured_piece
+                        self.pieces[to_pos] = captured_piece
                     return False
                 else:
                     # Promotion du pion
@@ -365,15 +366,19 @@ class ChessBoard(tk.Frame):
             rook_pos = (7, row)
             new_rook_pos = (5, row)
 
-        self.pieces[tuple(new_king_pos)] = self.pieces.pop(tuple(king_pos))
-        self.pieces[tuple(new_rook_pos)] = self.pieces.pop(tuple(rook_pos))
-        self.kings_moved[self.pieces[tuple(new_king_pos)].split("_")[0]] = True
+        if self.check_positions_for_attack(self.current_turn, [king_pos, new_king_pos, rook_pos]):
+            return False  # Cannot castle through check
+
+        self.pieces[new_king_pos] = self.pieces.pop(king_pos)
+        self.pieces[new_rook_pos] = self.pieces.pop(rook_pos)
+        self.kings_moved[self.pieces[new_king_pos].split("_")[0]] = True
         if new_rook_pos[0] == 3:
-            self.rooks_moved[self.pieces[tuple(new_rook_pos)].split("_")[0]]['left'] = True
+            self.rooks_moved[self.pieces[new_rook_pos].split("_")[0]]['left'] = True
         else:
-            self.rooks_moved[self.pieces[tuple(new_rook_pos)].split("_")[0]]['right'] = True
+            self.rooks_moved[self.pieces[new_rook_pos].split("_")[0]]['right'] = True
 
         self.refresh_board()
+        return True
 
     def ai_move(self):
         if self.current_turn != self.player_color:
@@ -402,7 +407,7 @@ class ChessBoard(tk.Frame):
                 safe_moves = []
                 for move in possible_moves:
                     from_pos, to_pos = move[1], move[2]
-                    original_piece = self.pieces.get(to_pos)
+                    original_piece = self.pieces.get(tuple(to_pos))
                     self.pieces[tuple(to_pos)] = self.pieces.pop(tuple(from_pos))
                     if not self.check_for_check(self.current_turn):
                         safe_moves.append(move)
@@ -421,6 +426,7 @@ class ChessBoard(tk.Frame):
                 self.current_turn = "white" if self.current_turn == "black" else "black"
                 self.refresh_board()
                 self.check_for_checkmate(self.current_turn)
+
 
     def evaluate_move(self, from_pos, to_pos):
         score = 0
@@ -466,6 +472,11 @@ class ChessBoard(tk.Frame):
         return score
 
     def promote_pawn(self, position):
+        if self.current_turn != self.player_color:  # Promotion automatique à la dame pour l'IA
+            self.pieces[position] = f"{self.current_turn}_queen"
+            self.refresh_board()
+            return
+
         promotion_window = tk.Toplevel(self)
         promotion_window.title("Promote Pawn")
         promotion_window.geometry("350x100")
@@ -474,9 +485,8 @@ class ChessBoard(tk.Frame):
         label.pack(pady=5)
 
         def promote(piece_type):
-            color = "black" if self.current_turn == "white" else "white"
-            color = "black" if color == "white" else "white"
-            self.pieces[tuple(position)] = f"{color}_{piece_type}"
+            color = self.current_turn
+            self.pieces[position] = f"{color}_{piece_type}"
             self.refresh_board()
             promotion_window.destroy()
 
@@ -484,6 +494,10 @@ class ChessBoard(tk.Frame):
         for piece in pieces:
             button = tk.Button(promotion_window, text=piece.capitalize(), command=lambda p=piece: promote(p))
             button.pack(pady=2, padx=5, side=tk.LEFT)
+
+        # Empêche l'IA de jouer pendant la promotion du joueur
+        self.wait_window(promotion_window)
+
 
     def capture_piece(self, captured_piece):
         piece_name = captured_piece.split("_")[1]
