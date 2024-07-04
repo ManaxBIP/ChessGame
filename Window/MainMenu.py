@@ -8,7 +8,7 @@ class MainMenu(tk.Frame):
         self.label = tk.Label(self, text="ChessGame", font=("Helvetica", 24))
         self.label.pack(pady=20)
 
-        self.play_button = tk.Button(self, text="Play 1v1 (local)", font=("Helvetica", 14), command=self.start_game)
+        self.play_button = tk.Button(self, text="Play vs IA", font=("Helvetica", 14), command=self.start_game)
         self.play_button.pack(pady=20)
 
     def start_game(self):

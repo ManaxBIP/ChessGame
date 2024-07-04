@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 
-
 class ChessBoard(tk.Frame):
     def __init__(self, parent, controller, rows=8, columns=8, size=64, color1="white", color2="purple"):
         super().__init__(parent)
@@ -56,6 +55,12 @@ class ChessBoard(tk.Frame):
         self.canvas.bind("<ButtonRelease-1>", self.on_drop)
 
         self.current_turn = "white"  # Initial turn set to white
+        
+        self.kings_moved = {'white': False, 'black': False}
+        self.rooks_moved = {
+            'white': {'left': False, 'right': False},
+            'black': {'left': False, 'right': False}
+        }
 
         self.add_pieces()
 
@@ -226,6 +231,7 @@ class ChessBoard(tk.Frame):
             self.calculated_moves = []
             self.update_selection_rectangle()
             self.refresh_board()
+            
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -237,6 +243,7 @@ class ChessBoard(tk.Frame):
             offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
             offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
             self.draw_move_indicators(offset_x, offset_y)
+            self.canvas.tag_raise(self.drag_data["item"])
 
             # Amener la pièce sélectionnée en avant-plan
             self.canvas.tag_raise(self.drag_data["item"], "piece")
@@ -250,7 +257,11 @@ class ChessBoard(tk.Frame):
                         new_position[1] < 0 or new_position[1] >= self.rows):
                     new_position = self.selected_position
                 if self.move_piece(self.selected_position, new_position):
+                    self.update_selection_rectangle()
+                    self.refresh_board()
+                    self.check_for_draw(self.current_turn)
                     self.current_turn = "black" if self.current_turn == "white" else "white"
+
                 # self.selected_position = None
                 # self.selected_piece = None
                 # self.calculated_moves = []
@@ -258,36 +269,25 @@ class ChessBoard(tk.Frame):
                 self.update_selection_rectangle()
                 self.refresh_board()
 
-            self.drag_data = {"x": 0, "y": 0, "item": None}
 
     def move_piece(self, from_pos, to_pos):
         if from_pos in self.pieces:
-            if to_pos in self.validMoves(self.pieces[from_pos], from_pos,
-                                         self.Calculate_moves(self.pieces[from_pos], from_pos)):
-                captured_piece = self.pieces.pop(to_pos, None)  # Capture piece if present
-                piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
-                self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
-                self.calculated_moves = []
-                if captured_piece:
-                    self.capture_piece(captured_piece)
+            piece = self.pieces[from_pos]
+            if piece.endswith("_king") and abs(from_pos[0] - to_pos[0]) == 2:
+                self.perform_castling(from_pos, to_pos)
+                return True
+            
+            if to_pos in self.validMoves(piece, from_pos, self.Calculate_moves(piece, from_pos)):
+                captured_piece = self.pieces.pop(to_pos, None)
+                piece_to_move = self.pieces.pop(from_pos)
+                self.pieces[to_pos] = piece_to_move
+                    
+                    opponent_color = "black" if self.current_turn == "white" else "white"
+                    if self.check_for_checkmate(opponent_color):
+                        self.show_checkmate_message(self.current_turn)
+                    elif self.check_for_draw(opponent_color):
+                        pass
 
-                # Check if the move has placed the current player's king in check
-                if self.check_for_check(self.current_turn):
-                    print("Move is invalid as it leaves king in check")
-                    # Revert the move
-                    self.pieces[from_pos] = self.pieces.pop(to_pos)
-                    if captured_piece:
-                        self.pieces[to_pos] = captured_piece
-                    return False
-                else:
-                    # Check for pawn promotion
-                    if piece_to_move.split("_")[1] == "pawn" and (to_pos[1] == 0 or to_pos[1] == 7):
-                        self.promote_pawn(to_pos)
-
-                    # Check for checkmate after a valid move
-                    if self.check_for_checkmate("black" if self.current_turn == "white" else "white"):
-                        winner_color = "white" if self.current_turn == "black" else "black"
-                        self.show_checkmate_message(winner_color)
                     self.selected_position = None
                     self.selected_piece = None
                     return True
@@ -295,6 +295,22 @@ class ChessBoard(tk.Frame):
             self.refresh_board()
             return False
         return False
+      
+    def perform_castling(self, king_pos, new_king_pos):
+        row = king_pos[1]
+        if new_king_pos[0] == 2:
+            rook_pos = (0, row)
+            new_rook_pos = (3, row)
+        elif new_king_pos[0] == 6:
+            rook_pos = (7, row)
+            new_rook_pos = (5, row)
+        
+        self.pieces[new_king_pos] = self.pieces.pop(king_pos)
+        self.pieces[new_rook_pos] = self.pieces.pop(rook_pos)
+        self.kings_moved[self.pieces[new_king_pos].split("_")[0]] = True
+        self.rooks_moved[self.pieces[new_rook_pos].split("_")[0]] = True
+
+        self.refresh_board()
 
     def promote_pawn(self, position):
         promotion_window = tk.Toplevel(self)
@@ -305,8 +321,7 @@ class ChessBoard(tk.Frame):
         label.pack(pady=5)
 
         def promote(piece_type):
-            color = "white" if self.current_turn == "white" else "black"
-            color = "black" if color == "white" else "white"
+            color = "black" if self.current_turn == "white" else "white"
             self.pieces[position] = f"{color}_{piece_type}"
             self.refresh_board()
             promotion_window.destroy()
@@ -374,6 +389,7 @@ class ChessBoard(tk.Frame):
         piece_name = piece.split("_")[1]
         positions_available = []
         positions_available_valide = []
+        
         match piece_name:
             case "king":
                 # Calculate moves for king
@@ -385,12 +401,32 @@ class ChessBoard(tk.Frame):
                 positions_available.append((position[0] - 1, position[1] + 1))
                 positions_available.append((position[0] + 1, position[1] - 1))
                 positions_available.append((position[0] - 1, position[1] - 1))
+
+                # Check for castling moves
+                piece_color = piece.split("_")[0]
+                if not self.kings_moved[piece_color]:
+                    if piece_color == "white":
+                        row = 7
+                        if not self.rooks_moved[piece_color]['left'] and all((i, row) not in self.pieces for i in range(1, 4)):
+                            if not self.check_positions_for_attack(piece_color, [(4, row), (2, row), (3, row)]):
+                                positions_available.append((2, row))  # Queen side castling
+                        if not self.rooks_moved[piece_color]['right'] and all((i, row) not in self.pieces for i in range(5, 7)):
+                            if not self.check_positions_for_attack(piece_color, [(4, row), (5, row), (6, row)]):
+                                positions_available.append((6, row))  # King side castling
+                    else:
+                        row = 0
+                        if not self.rooks_moved[piece_color]['left'] and all((i, row) not in self.pieces for i in range(1, 4)):
+                            if not self.check_positions_for_attack(piece_color, [(4, row), (2, row), (3, row)]):
+                                positions_available.append((2, row))  # Queen side castling
+                        if not self.rooks_moved[piece_color]['right'] and all((i, row) not in self.pieces for i in range(5, 7)):
+                            if not self.check_positions_for_attack(piece_color, [(4, row), (5, row), (6, row)]):
+                                positions_available.append((6, row))  # King side castling
+
                 for pos in positions_available:
                     if pos[0] < 0 or pos[0] >= 8 or pos[1] < 0 or pos[1] >= 8:
                         continue
                     else:
                         positions_available_valide.append(pos)
-                pass
             case "queen":
                 # Calculate moves for queen
                 for i in range(1, 8):
@@ -407,7 +443,6 @@ class ChessBoard(tk.Frame):
                         continue
                     else:
                         positions_available_valide.append(pos)
-                pass
             case "rook":
                 # Calculate moves for rook
                 for i in range(1, 8):
@@ -420,7 +455,6 @@ class ChessBoard(tk.Frame):
                         continue
                     else:
                         positions_available_valide.append(pos)
-                pass
             case "bishop":
                 # Calculate moves for bishop
                 for i in range(1, 8):
@@ -433,8 +467,6 @@ class ChessBoard(tk.Frame):
                         continue
                     else:
                         positions_available_valide.append(pos)
-                positions_available = positions_available_valide
-                pass
             case "knight":
                 # Calculate moves for knight
                 positions_available.append((position[0] + 1, position[1] + 2))
@@ -450,7 +482,6 @@ class ChessBoard(tk.Frame):
                         continue
                     else:
                         positions_available_valide.append(pos)
-                pass
             case "pawn":
                 # Calculate moves for pawn
                 direction = -1 if piece.split("_")[0] == "white" else 1
@@ -476,10 +507,10 @@ class ChessBoard(tk.Frame):
                         continue
                     else:
                         positions_available_valide.append(pos)
-                pass
             case _:
                 print("Invalid piece name")
         return positions_available_valide
+
 
     def validMoves(self, piece, position, calculateMoves: list) -> list:
         valid_moves = []
@@ -496,7 +527,7 @@ class ChessBoard(tk.Frame):
 
         for move in calculateMoves:
             if piece_name in ["rook", "queen"]:
-                if move[0] == position[0]:  # Vertical move
+                if move[0] == position[0]:  # Déplacement vertical
                     step = (0, 1) if move[1] > position[1] else (0, -1)
                     if is_clear_path(position, move, step):
                         if move in self.pieces:
@@ -504,7 +535,7 @@ class ChessBoard(tk.Frame):
                                 valid_moves.append(move)
                         else:
                             valid_moves.append(move)
-                elif move[1] == position[1]:  # Horizontal move
+                elif move[1] == position[1]:  # Déplacement horizontal
                     step = (1, 0) if move[0] > position[0] else (-1, 0)
                     if is_clear_path(position, move, step):
                         if move in self.pieces:
@@ -515,7 +546,7 @@ class ChessBoard(tk.Frame):
             if piece_name in ["bishop", "queen"]:
                 step_x = 1 if move[0] > position[0] else -1
                 step_y = 1 if move[1] > position[1] else -1
-                if abs(move[0] - position[0]) == abs(move[1] - position[1]):  # Diagonal move
+                if abs(move[0] - position[0]) == abs(move[1] - position[1]):  # Déplacement diagonal
                     if is_clear_path(position, move, (step_x, step_y)):
                         if move in self.pieces:
                             if self.pieces[move].split("_")[0] != piece_color:
@@ -527,8 +558,8 @@ class ChessBoard(tk.Frame):
                 start_row = 6 if piece_color == "white" else 1
 
                 if move not in self.pieces:
-                    if move[0] == position[0]:  # Forward move
-                        if move[1] == position[1] + direction:  # One step forward
+                    if move[0] == position[0]:  # Déplacement vers l'avant
+                        if move[1] == position[1] + direction:  # Un pas en avant
                             valid_moves.append(move)
                         elif (move[1] == position[1] + 2 * direction and
                               position[1] == start_row and
@@ -549,6 +580,17 @@ class ChessBoard(tk.Frame):
                     valid_moves.append(move)
 
         return valid_moves
+    
+    def check_positions_for_attack(self, color, positions):
+        opponent_color = "white" if color == "black" else "black"
+        for pos in positions:
+            for piece_pos, piece in self.pieces.items():
+                if piece.split("_")[0] == opponent_color:
+                    moves = self.Calculate_moves(piece, piece_pos)
+                    if pos in self.validMoves(piece, piece_pos, moves):
+                        return True
+        return False
+
 
     def check_for_check(self, color):
         king_position = None
@@ -559,7 +601,7 @@ class ChessBoard(tk.Frame):
         if not king_position:
             return False
 
-        # Check if any of the opponent's pieces can move to the king's position
+        # Vérifiez si l'une des pièces de l'adversaire peut se déplacer vers la position du roi
         opponent_color = "white" if color == "black" else "black"
         for pos, piece in self.pieces.items():
             if piece.split("_")[0] == opponent_color:
@@ -569,11 +611,11 @@ class ChessBoard(tk.Frame):
         return False
 
     def check_for_checkmate(self, color):
-        # Check if the player is in checkmate
+        # Vérifiez si le joueur est en échec et mat
         if not self.check_for_check(color):
             return False
 
-        pieces_copy = list(self.pieces.items())  # Create a copy of the items to avoid RuntimeError
+        pieces_copy = list(self.pieces.items())  # Créez une copie des éléments pour éviter RuntimeError
 
         for pos, piece in pieces_copy:
             if piece.split("_")[0] == color:
@@ -591,18 +633,61 @@ class ChessBoard(tk.Frame):
                         self.pieces[move] = original_piece
 
         return True
+      
+      
+    def check_for_stalemate(self, color):
+        if self.check_for_check(color):
+            return False  # Pas de pat si le joueur est en échec
 
-    def show_checkmate_message(self, winner_color):
-        winner = "White" if winner_color == "white" else "Black"
-        winner = "Black" if winner == "White" else "White"
-        message = f"Checkmate! {winner} wins!"
-        tk.messagebox.showinfo("Game Over", message)
+        for pos, piece in self.pieces.items():
+            if piece.split("_")[0] == color:
+                valid_moves = self.validMoves(piece, pos, self.Calculate_moves(piece, pos))
+                if valid_moves:
+                    return False  # Pas de pat si le joueur a des mouvements valides
+
+        return True  # Pat si aucune pièce du joueur n'a de mouvements valides
+
+    def check_for_insufficient_material(self):
+        remaining_pieces = list(self.pieces.values())
+        if len(remaining_pieces) == 2:
+            return True  # Roi contre roi
+
+        if len(remaining_pieces) == 3:
+            piece_types = [piece.split("_")[1] for piece in remaining_pieces]
+            if "king" in piece_types and ("bishop" in piece_types or "knight" in piece_types):
+                return True  # Roi et fou ou roi et cavalier contre roi
+
+        if len(remaining_pieces) == 4:
+            piece_types = [piece.split("_")[1] for piece in remaining_pieces]
+            if piece_types.count("bishop") == 2:
+                return True  # Roi et deux fous de couleurs opposées contre roi
+
+        return False
+
+    def check_for_draw(self, color):
+        if self.check_for_stalemate(color):
+            self.show_draw_message("Pat")
+            return True
+
+        if self.check_for_insufficient_material():
+            self.show_draw_message("Matériel insuffisant")
+            return True
+
+        return False
+
+    def show_draw_message(self, reason):
+        message = f"Égalité due à {reason}!"
+        tk.messagebox.showinfo("Jeu Terminé", message)
         self.reset_board()
         self.controller.show_frame("MainMenu")
 
-    def return_to_main_menu(self):
-        self.pack_forget()
-        self.main_menu.pack(side="top", fill="both", expand=True)
+    def show_checkmate_message(self, winner_color):
+        winner = "Blanc" if winner_color == "white" else "Noir"
+        message = f"Échec et mat! {winner} gagne!"
+        tk.messagebox.showinfo("Jeu Terminé", message)
+        self.reset_board()
+        self.controller.show_frame("MainMenu")
+
 
     def reset_board(self):
         self.pieces.clear()
