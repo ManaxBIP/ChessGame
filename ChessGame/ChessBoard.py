@@ -57,7 +57,8 @@ class ChessBoard(tk.Frame):
 
 
         self.turn_label = tk.Label(self.sidebar, text="Turn: White")
-        self.turn_label.pack(pady=(20, 0))
+        self.turn_label.place(relx=0.5, rely=0.5, anchor="center")
+        # self.turn_label.pack(pady=(20, 0))
 
         # Initialize captures lists
         self.white_captures = []
