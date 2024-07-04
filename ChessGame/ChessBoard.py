@@ -845,7 +845,6 @@ class ChessBoard(tk.Frame):
 
     def show_checkmate_message(self, winner_color):
         winner = "White" if winner_color == "white" else "Black"
-        winner = "Black" if winner == "White" else "White"
         message = f"Checkmate! {winner} wins!"
         tk.messagebox.showinfo("Game Over", message)
         winnerRecord = "1-0" if winner == "White" else "0-1"
