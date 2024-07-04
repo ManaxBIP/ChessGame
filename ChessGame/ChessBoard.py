@@ -444,6 +444,11 @@ class ChessBoard(tk.Frame):
                 else:
                     best_move = possible_moves[0]
 
+                # Ajouter un facteur d'exploration
+                exploration_chance = 0.1  # 10% de chances de choisir un mouvement aléatoire parmi les meilleurs
+                if random.random() < exploration_chance:
+                    best_move = random.choice(safe_moves) if safe_moves else random.choice(possible_moves)
+
                 from_pos, to_pos = best_move[1], best_move[2]
                 self.move_piece(from_pos, to_pos, record=False)  # Désactiver l'enregistrement pour les mouvements IA
                 self.current_turn = "white" if self.current_turn == "black" else "black"
@@ -891,6 +896,7 @@ class ChessBoard(tk.Frame):
 
         return similar_games
 
+
     def adjust_move_evaluation(self, similar_games):
         evaluation_adjustments = {}
         weight_factor = 0.5  # Weight factor for the influence of similar games
@@ -903,14 +909,20 @@ class ChessBoard(tk.Frame):
                 if move not in evaluation_adjustments:
                     evaluation_adjustments[move] = 0
 
+                # Apprendre des défaites aussi
                 if result == "1-0" and self.current_turn == "white":
                     evaluation_adjustments[move] += value * similarity_score * weight_factor
                 elif result == "0-1" and self.current_turn == "black":
                     evaluation_adjustments[move] += value * similarity_score * weight_factor
+                elif result == "1-0" and self.current_turn == "black":
+                    evaluation_adjustments[move] -= value * similarity_score * weight_factor
+                elif result == "0-1" and self.current_turn == "white":
+                    evaluation_adjustments[move] -= value * similarity_score * weight_factor
                 else:
                     evaluation_adjustments[move] -= value * similarity_score * weight_factor
 
         return evaluation_adjustments
+
 
 
     def show_draw_message(self, reason):
