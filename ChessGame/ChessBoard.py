@@ -40,7 +40,7 @@ class ChessBoard(tk.Frame):
         self.white_points = 0
         self.black_points = 0
 
-        self.player_color = "white"  # Initialiser une seule fois
+        self.player_color = "black"  # Initialiser une seule fois
         print(f"Player color: {self.player_color}")
 
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
@@ -69,6 +69,9 @@ class ChessBoard(tk.Frame):
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_drop)
         self.add_pieces()
+
+        if self.player_color == "black":
+            self.after(500, self.ai_move)
 
         self.csv_file = "chess_game_data.csv"
         if not os.path.exists(self.csv_file):
@@ -345,9 +348,6 @@ class ChessBoard(tk.Frame):
 
     
     def ai_move(self):
-        """
-        Execute a move for the AI player.
-        """
         if self.current_turn != self.player_color:
             possible_moves = []
             pieces_copy = list(self.pieces.items())  # Créer une copie des items
