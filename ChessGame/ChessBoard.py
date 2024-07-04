@@ -226,6 +226,7 @@ class ChessBoard(tk.Frame):
             self.calculated_moves = []
             self.update_selection_rectangle()
             self.refresh_board()
+            
 
     def on_drag(self, event):
         if self.drag_data["item"]:
@@ -237,6 +238,7 @@ class ChessBoard(tk.Frame):
             offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
             offset_y = (self.canvas.winfo_height() - self.rows * self.size) / 2
             self.draw_move_indicators(offset_x, offset_y)
+            self.canvas.tag_raise(self.drag_data["item"])
 
 
     def on_drop(self, event):
