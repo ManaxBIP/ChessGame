@@ -24,10 +24,16 @@ class ChessBoard(tk.Frame):
         self.load_pieces()
 
         self.canvas = tk.Canvas(self)
-        self.canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.pack(side="right", fill="both", expand=True)
 
         self.sidebar = tk.Frame(self)
-        self.sidebar.pack(side="right", fill="y")
+        self.sidebar.pack(side="left", fill="y")
+
+        self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
+        print(f"Player color: {self.player_color}")
+
+        self.turn_label = tk.Label(self.sidebar, text="Turn: White")
+        self.turn_label.place(relx=0.5, rely=0.5, anchor="center")
 
         self.black_captures_label = tk.Label(self.sidebar, text="Black Captures")
         self.black_captures_label.pack(side="top")
@@ -47,11 +53,7 @@ class ChessBoard(tk.Frame):
         self.white_points = 0
         self.black_points = 0
 
-        self.player_color = random.choice(["white", "black"])  # Initialiser une seule fois
-        print(f"Player color: {self.player_color}")
 
-        self.turn_label = tk.Label(self.sidebar, text="Turn: White")
-        self.turn_label.place(relx=0.5, rely=0.5, anchor="center")
         # self.turn_label.pack(pady=(20, 0))
 
         # Initialize captures lists
