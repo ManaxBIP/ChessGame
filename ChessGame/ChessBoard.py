@@ -425,7 +425,9 @@ class ChessBoard(tk.Frame):
                         if (pos, move) in evaluation_adjustments:
                             move_score += evaluation_adjustments[(pos, move)]
                             
-                        possible_moves.append((move_score, pos, move))
+                            
+                        if self.is_move_safe(pos, move):
+                            possible_moves.append((move_score, pos, move))
 
             if possible_moves:
                 # Trier les mouvements par score de manière décroissante
@@ -455,9 +457,33 @@ class ChessBoard(tk.Frame):
                     best_move = random.choice(safe_moves) if safe_moves else random.choice(possible_moves)
 
                 from_pos, to_pos = best_move[1], best_move[2]
-                self.move_piece(from_pos, to_pos, record=False)  # Désactiver l'enregistrement pour les mouvements IA
+                self.move_piece(from_pos, to_pos, record=True)  # Désactiver l'enregistrement pour les mouvements IA
                 self.current_turn = "black" if self.current_turn == "white" else "white"
                 self.refresh_board()
+
+    def is_move_safe(self, from_pos, to_pos):
+        piece = self.pieces.get(from_pos)
+        if not piece:
+            return False
+
+        original_piece = self.pieces.pop(to_pos, None)
+        self.pieces[to_pos] = self.pieces.pop(from_pos)
+        
+        safe = True
+        opponent_color = "white" if piece.split("_")[0] == "black" else "black"
+
+        for pos, opponent_piece in self.pieces.items():
+            if opponent_piece.split("_")[0] == opponent_color:
+                valid_moves = self.validMoves(opponent_piece, pos, self.Calculate_moves(opponent_piece, pos))
+                if to_pos in valid_moves:
+                    safe = False
+                    break
+
+        self.pieces[from_pos] = self.pieces.pop(to_pos)
+        if original_piece:
+            self.pieces[to_pos] = original_piece
+
+        return safe
 
 
     def evaluate_move(self, from_pos, to_pos):
@@ -878,6 +904,31 @@ class ChessBoard(tk.Frame):
 
         return False
     
+    def is_move_safe(self, from_pos, to_pos):
+        piece = self.pieces.get(from_pos)
+        if not piece:
+            return False
+
+        original_piece = self.pieces.pop(to_pos, None)
+        self.pieces[to_pos] = self.pieces.pop(from_pos)
+        
+        safe = True
+        opponent_color = "white" if piece.split("_")[0] == "black" else "black"
+
+        for pos, opponent_piece in self.pieces.items():
+            if opponent_piece.split("_")[0] == opponent_color:
+                valid_moves = self.validMoves(opponent_piece, pos, self.Calculate_moves(opponent_piece, pos))
+                if to_pos in valid_moves:
+                    safe = False
+                    break
+
+        self.pieces[from_pos] = self.pieces.pop(to_pos)
+        if original_piece:
+            self.pieces[to_pos] = original_piece
+
+        return safe
+
+    
     def analyze_csv(self):
         df = pd.read_csv(self.csv_file)
         similar_games = []
@@ -909,6 +960,10 @@ class ChessBoard(tk.Frame):
         weight_factor = 0.5  # Weight factor for the influence of similar games
 
         for similarity_score, moves, result in similar_games:
+            # Calculer les points capturés et perdus pour les blancs et les noirs
+            white_points = sum(move["Value"] for move in moves["white"] if "Value" in move)
+            black_points = sum(move["Value"] for move in moves["black"] if "Value" in move)
+            
             for move_data in moves[self.current_turn][int(similarity_score * len(moves[self.current_turn])):]:
                 move = tuple(move_data["Move"])
                 value = move_data["Value"]
@@ -916,19 +971,27 @@ class ChessBoard(tk.Frame):
                 if move not in evaluation_adjustments:
                     evaluation_adjustments[move] = 0
 
-                # Apprendre des défaites aussi
-                if result == "1-0" and self.current_turn == "white":
-                    evaluation_adjustments[move] += value * similarity_score * weight_factor
-                elif result == "0-1" and self.current_turn == "black":
-                    evaluation_adjustments[move] += value * similarity_score * weight_factor
-                elif result == "1-0" and self.current_turn == "black":
-                    evaluation_adjustments[move] -= value * similarity_score * weight_factor
-                elif result == "0-1" and self.current_turn == "white":
-                    evaluation_adjustments[move] -= value * similarity_score * weight_factor
+                # Ajuster en fonction du résultat
+                if result == "1-0":  # Blancs gagnent
+                    if self.current_turn == "white":
+                        evaluation_adjustments[move] += value * similarity_score * weight_factor + white_points
+                    else:
+                        evaluation_adjustments[move] -= value * similarity_score * weight_factor + black_points
+                elif result == "0-1":  # Noirs gagnent
+                    if self.current_turn == "black":
+                        evaluation_adjustments[move] += value * similarity_score * weight_factor + black_points
+                    else:
+                        evaluation_adjustments[move] -= value * similarity_score * weight_factor + white_points
+                elif result == "0.5-0.5":  # Match nul
+                    if self.current_turn == "white":
+                        evaluation_adjustments[move] += (value * similarity_score * weight_factor + white_points) * 0.5
+                    else:
+                        evaluation_adjustments[move] += (value * similarity_score * weight_factor + black_points) * 0.5
                 else:
                     evaluation_adjustments[move] -= value * similarity_score * weight_factor
 
         return evaluation_adjustments
+
 
 
 
