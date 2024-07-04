@@ -28,35 +28,45 @@ class ChessBoard(tk.Frame):
         self.load_pieces()
 
         self.canvas = tk.Canvas(self)
-        self.canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.pack(side="right", fill="both", expand=True)
 
         self.sidebar = tk.Frame(self)
-        self.sidebar.pack(side="right", fill="y")
-
-        self.white_captures_frame = tk.Frame(self.sidebar)
-        self.white_captures_frame.pack()
-        self.black_captures_frame = tk.Frame(self.sidebar)
-        self.black_captures_frame.pack()
-
-        self.white_points = 0
-        self.black_points = 0
+        self.sidebar.pack(side="left", fill="y")
 
         self.current_turn = "white"  # Initial turn set to white
 
         self.player_color = random.choice(["white", "black"])
 
-        self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
-        self.white_captures_label.pack()
-        self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
-        self.black_captures_label.pack()
+        self.turn_label = tk.Label(self.sidebar, text="Turn: White")
+        self.turn_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        self.turn_label = tk.Label(self.sidebar, text=f"Turn: {self.current_turn}")
-        self.turn_label.pack()
+        self.black_captures_label = tk.Label(self.sidebar, text="Black Captures")
+        self.black_captures_label.pack(side="top")
+        self.white_captures_label = tk.Label(self.sidebar, text="White Captures")
+        self.white_captures_label.pack(side="bottom")
 
         self.white_points_label = tk.Label(self.sidebar, text="")
-        self.white_points_label.pack()
+        self.white_points_label.pack(side="bottom")
         self.black_points_label = tk.Label(self.sidebar, text="")
-        self.black_points_label.pack()
+        self.black_points_label.pack(side="top")
+
+        self.black_captures_frame = tk.Frame(self.sidebar)
+        self.black_captures_frame.pack(pady=(10, 10), side="top")
+        self.white_captures_frame = tk.Frame(self.sidebar)
+        self.white_captures_frame.pack(pady=(10, 10), side="bottom")
+
+        self.white_points = 0
+        self.black_points = 0
+
+        # Initialize captures lists
+        self.white_captures = []
+        self.black_captures = []
+
+        # Initialize captured piece positions
+        self.white_captures_row = 0
+        self.white_captures_col = 0
+        self.black_captures_row = 0
+        self.black_captures_col = 0
 
         self.black_moves = []
         self.white_moves = []
@@ -70,8 +80,6 @@ class ChessBoard(tk.Frame):
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_drop)
-
-        self.current_turn = "white"  # Initial turn set to white
 
         self.kings_moved = {'white': False, 'black': False}
         self.rooks_moved = {
@@ -181,13 +189,19 @@ class ChessBoard(tk.Frame):
         letters = "abcdefgh"
         if self.player_color == "black":
             letters = letters[::-1]
+            self.white_captures_frame.pack(pady=(10, 10), side="top")
+            self.black_captures_frame.pack(pady=(10, 10), side="bottom")
+            self.black_points_label.pack(side="bottom")
+            self.white_points_label.pack(side="top")
         for col in range(self.columns):
             if self.player_color == "white":
                 x = offset_x + col * self.size + self.size / 2
-                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col], tags="square")
+                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[col],
+                                        tags="square")
             else:
                 x = offset_x + (self.columns - 1 - col) * self.size + self.size / 2
-                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2, text=letters[self.columns - 1 - col], tags="square")
+                self.canvas.create_text(x, offset_y + self.rows * self.size + self.size / 2,
+                                        text=letters[self.columns - 1 - col], tags="square")
 
         for position, piece in self.pieces.items():
             col, row = position
@@ -204,7 +218,7 @@ class ChessBoard(tk.Frame):
         if self.current_turn == self.player_color:
             self.draw_move_indicators(offset_x, offset_y)
             self.update_selection_rectangle(offset_x, offset_y)
-            
+
         if self.current_turn == self.player_color and self.mode == "ia_vs_ia":
             self.after(1000, self.ai_move)
 
@@ -291,6 +305,7 @@ class ChessBoard(tk.Frame):
                 new_position = self.selected_position
             if self.move_piece(self.selected_position, new_position, True):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
+                self.turn_label.config(text=f"Turn: {self.current_turn.capitalize()}")
             self.selected_position = None
             self.calculated_moves = np.array([])
             self.update_selection_rectangle()
@@ -323,6 +338,7 @@ class ChessBoard(tk.Frame):
                     new_position = self.selected_position
                 if self.move_piece(self.selected_position, new_position, True):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
+                    self.turn_label.config(text=f"Turn: {self.current_turn.capitalize()}")
                 self.update_selection_rectangle()
                 self.refresh_board()
 
@@ -335,7 +351,7 @@ class ChessBoard(tk.Frame):
             piece = self.pieces[from_pos]
             piece_color = piece.split("_")[0]
             piece_type = piece.split("_")[1]
-            
+
             # Vérifier et effectuer le roque
             if piece_type == "king" and abs(from_pos[0] - to_pos[0]) == 2:
                 if not self.perform_castling(from_pos, to_pos):
@@ -412,7 +428,7 @@ class ChessBoard(tk.Frame):
         if self.current_turn != self.player_color or self.mode == "ia_vs_ia":
             similar_games = self.analyze_csv()
             evaluation_adjustments = self.adjust_move_evaluation(similar_games)
-            
+
             possible_moves = []
             pieces_copy = list(self.pieces.items())
 
@@ -421,11 +437,11 @@ class ChessBoard(tk.Frame):
                     valid_moves = self.validMoves(piece, pos, self.Calculate_moves(piece, pos))
                     for move in valid_moves:
                         move_score = self.evaluate_move(pos, move)
-                        
+
                         if (pos, move) in evaluation_adjustments:
                             move_score += evaluation_adjustments[(pos, move)]
-                            
-                            
+
+
                         if self.is_move_safe(pos, move):
                             possible_moves.append((move_score, pos, move))
 
@@ -468,7 +484,7 @@ class ChessBoard(tk.Frame):
 
         original_piece = self.pieces.pop(to_pos, None)
         self.pieces[to_pos] = self.pieces.pop(from_pos)
-        
+
         safe = True
         opponent_color = "white" if piece.split("_")[0] == "black" else "black"
 
@@ -534,7 +550,7 @@ class ChessBoard(tk.Frame):
             self.pieces[position] = f"{self.current_turn}_queen"
             self.refresh_board()
             return
-        
+
         if self.mode == "ia_vs_ia":
             self.pieces[position] = f"{self.current_turn}_queen"
             self.refresh_board()
@@ -564,7 +580,7 @@ class ChessBoard(tk.Frame):
 
     def capture_piece(self, captured_piece):
         piece_name = captured_piece.split("_")[1]
-        points = {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 99}
+        points = {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 0}
         point_value = points.get(piece_name, 0)
 
         # Resize the image for captured piece
@@ -574,25 +590,31 @@ class ChessBoard(tk.Frame):
 
         if captured_piece.startswith("white"):
             self.black_points += point_value
-            capture_label = tk.Label(self.black_captures_frame, image=capture_image)
-            capture_label.image = capture_image
-            capture_label.pack()
+            self.display_captured_piece(self.black_captures_frame, capture_image, self.black_captures_row, self.black_captures_col)
+            self.black_captures_col += 1
         else:
             self.white_points += point_value
-            capture_label = tk.Label(self.white_captures_frame, image=capture_image)
-            capture_label.image = capture_image
-            capture_label.pack()
+            self.display_captured_piece(self.white_captures_frame, capture_image, self.white_captures_row, self.white_captures_col)
+            self.white_captures_col += 1
 
-        # Update points display only for the leading side
+        # Calculate the difference in score show this in the points label only for the leading side
+
         if self.white_points > self.black_points:
-            self.white_points_label.config(text=f"+{self.white_points - self.black_points}")
-            self.black_points_label.config(text="")
-        elif self.black_points > self.white_points:
-            self.black_points_label.config(text=f"+{self.black_points - self.white_points}")
-            self.white_points_label.config(text="")
+            self.white_points_label.config(text=f"(+{self.white_points - self.black_points})")
+            self.black_points_label.config(text=f"")
+        elif self.black_points == self.white_points:
+            self.white_points_label.config(text=f"")
+            self.black_points_label.config(text=f"")
         else:
-            self.white_points_label.config(text="")
-            self.black_points_label.config(text="")
+            self.black_points_label.config(text=f"(+{self.black_points - self.white_points})")
+            self.white_points_label.config(text=f"")
+
+    def display_captured_piece(self, frame, image, row, col):
+        # add the difference of the score to the label
+
+        label = tk.Label(frame, image=image)
+        label.image = image  # Keep a reference to the image
+        label.grid(row=row, column=col)
 
     def add_piece(self, piece, position):
         self.pieces[tuple(position)] = piece
@@ -614,6 +636,7 @@ class ChessBoard(tk.Frame):
             y1 = offset_y + row * self.size
             self.selection_rectangle = self.canvas.create_rectangle(x1, y1, x1 + self.size, y1 + self.size,
                                                                     outline="yellow", width=3)
+            self.canvas.tag_lower(self.selection_rectangle, "piece")
 
     def Calculate_moves(self, piece, position, checking_for_castling=False):
         piece_name = piece.split("_")[1]
@@ -738,6 +761,7 @@ class ChessBoard(tk.Frame):
                         continue
                     else:
                         positions_available_valide.append(pos)
+                pass
             case _:
                 print("Invalid piece name")
         return positions_available_valide
@@ -903,7 +927,7 @@ class ChessBoard(tk.Frame):
             return True
 
         return False
-    
+
     def is_move_safe(self, from_pos, to_pos):
         piece = self.pieces.get(from_pos)
         if not piece:
@@ -911,7 +935,7 @@ class ChessBoard(tk.Frame):
 
         original_piece = self.pieces.pop(to_pos, None)
         self.pieces[to_pos] = self.pieces.pop(from_pos)
-        
+
         safe = True
         opponent_color = "white" if piece.split("_")[0] == "black" else "black"
 
@@ -928,7 +952,7 @@ class ChessBoard(tk.Frame):
 
         return safe
 
-    
+
     def analyze_csv(self):
         df = pd.read_csv(self.csv_file)
         similar_games = []
@@ -963,7 +987,7 @@ class ChessBoard(tk.Frame):
             # Calculer les points capturés et perdus pour les blancs et les noirs
             white_points = sum(move["Value"] for move in moves["white"] if "Value" in move)
             black_points = sum(move["Value"] for move in moves["black"] if "Value" in move)
-            
+
             for move_data in moves[self.current_turn][int(similarity_score * len(moves[self.current_turn])):]:
                 move = tuple(move_data["Move"])
                 value = move_data["Value"]
@@ -1026,6 +1050,10 @@ class ChessBoard(tk.Frame):
         self.calculated_moves = np.array([])
         self.white_points = 0
         self.black_points = 0
+        self.white_captures_row = 0
+        self.white_captures_col = 0
+        self.black_captures_row = 0
+        self.black_captures_col = 0
         for widget in self.white_captures_frame.winfo_children():
             widget.destroy()
         for widget in self.black_captures_frame.winfo_children():
