@@ -40,7 +40,11 @@ class ChessBoard(tk.Frame):
         self.white_points = 0
         self.black_points = 0
 
-        self.player_color = "black"  # Initialiser une seule fois
+        self.current_turn = "white"  # Initial turn set to white
+
+
+        self.player_color = random.choice(["white", "black"])
+
         print(f"Player color: {self.player_color}")
 
         self.white_captures_label = tk.Label(self.white_captures_frame, text="White Captures:")
@@ -48,13 +52,14 @@ class ChessBoard(tk.Frame):
         self.black_captures_label = tk.Label(self.black_captures_frame, text="Black Captures:")
         self.black_captures_label.pack()
 
+        self.turn_label = tk.Label(self.sidebar, text=f"Turn: {self.current_turn}")
+        self.turn_label.pack()
+
         self.white_points_label = tk.Label(self.sidebar, text="")
         self.white_points_label.pack()
         self.black_points_label = tk.Label(self.sidebar, text="")
         self.black_points_label.pack()
 
-
-        self.current_turn = "white"  # Initial turn set to white
 
         self.black_moves = []
         self.white_moves = []
@@ -70,15 +75,12 @@ class ChessBoard(tk.Frame):
         self.canvas.bind("<ButtonRelease-1>", self.on_drop)
         self.add_pieces()
 
-        if self.player_color == "black":
-            self.after(500, self.ai_move)
-
         self.csv_file = "chess_game_data.csv"
         if not os.path.exists(self.csv_file):
             self.initialize_csv()
 
     def initialize_csv(self):
-        df = pd.DataFrame(columns=["Player Color", "IA Color", "Moves", "White Score", "Black Score", "Result"])    
+        df = pd.DataFrame(columns=["Player Color", "IA Color", "Moves", "White Score", "Black Score", "Result"])
         df.to_csv(self.csv_file, index=False)
 
     def record_move(self, from_pos, to_pos):
@@ -87,8 +89,6 @@ class ChessBoard(tk.Frame):
             self.white_moves.append({"Move": move, "Value": self.evaluate_move(from_pos, to_pos)})
         else:
             self.black_moves.append({"Move": move, "Value": self.evaluate_move(from_pos, to_pos)})
-                                                                                
-
 
     def record_game(self, moves, result):
         df = pd.read_csv(self.csv_file)
@@ -102,7 +102,6 @@ class ChessBoard(tk.Frame):
         }
         df = df._append(new_row, ignore_index=True)
         df.to_csv(self.csv_file, index=False)
-    
 
     def load_pieces(self):
         piece_names = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
@@ -187,9 +186,10 @@ class ChessBoard(tk.Frame):
 
             self.canvas.create_image(x + self.size / 2, y + self.size / 2, image=self.piece_images[piece],
                                      tags=("piece", position))
-        
-        self.draw_move_indicators(offset_x, offset_y)
-        self.update_selection_rectangle(offset_x, offset_y)
+
+        if self.current_turn == self.player_color:
+            self.draw_move_indicators(offset_x, offset_y)
+            self.update_selection_rectangle(offset_x, offset_y)
 
     def draw_move_indicators(self, offset_x, offset_y):
         self.canvas.delete("move_indicator")
@@ -214,6 +214,8 @@ class ChessBoard(tk.Frame):
         offset_y = (canvas_height - self.rows * self.size) / 2
 
         self.draw_board(offset_x, offset_y)
+        if self.current_turn != self.player_color:
+            self.after(1000, self.ai_move)
 
     def piece_location(self, event) -> tuple:
         col = (event.x - (self.canvas.winfo_width() - self.columns * self.size) / 2) // self.size
@@ -231,52 +233,52 @@ class ChessBoard(tk.Frame):
     def on_click(self, event):
         position = self.piece_location(event)
 
-        if self.selected_piece and self.selected_position:
-            if position in self.calculated_moves:
-                self.click_movement(position)
-                self.selected_piece = None
-                self.selected_position = None
-                self.calculated_moves = []
-                self.update_selection_rectangle()
-                self.refresh_board()
-            else:
-                self.selected_piece = None
-                self.selected_position = None
-                self.calculated_moves = []
-                self.update_selection_rectangle()
-                self.refresh_board()
-        else:
-            if position in self.pieces:
-                if self.pieces[position].split("_")[0] == self.current_turn:
-                    self.selected_piece = self.pieces[position]
-                    self.selected_position = position
-                    self.drag_data["item"] = self.canvas.find_withtag("current")
-                    self.drag_data["x"] = event.x
-                    self.drag_data["y"] = event.y
-                    self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position,
-                                                            self.Calculate_moves(self.selected_piece,
-                                                                                 self.selected_position))
+        if self.current_turn == self.player_color:
+            if self.selected_piece and self.selected_position:
+                if position in self.calculated_moves:
+                    self.click_movement(position)
+                    self.selected_piece = None
+                    self.selected_position = None
+                    self.calculated_moves = []
                     self.update_selection_rectangle()
-                    self.draw_move_indicators((self.canvas.winfo_width() - self.columns * self.size) / 2,
-                                              (self.canvas.winfo_height() - self.rows * self.size) / 2)
+                    self.refresh_board()
+                else:
+                    self.selected_piece = None
+                    self.selected_position = None
+                    self.calculated_moves = []
+                    self.update_selection_rectangle()
+                    self.refresh_board()
+            else:
+                if position in self.pieces:
+                    if self.pieces[position].split("_")[0] == self.current_turn:
+                        self.selected_piece = self.pieces[position]
+                        self.selected_position = position
+                        self.drag_data["item"] = self.canvas.find_withtag("current")
+                        self.drag_data["x"] = event.x
+                        self.drag_data["y"] = event.y
+                        self.calculated_moves = self.validMoves(self.selected_piece, self.selected_position,
+                                                                self.Calculate_moves(self.selected_piece,
+                                                                                     self.selected_position))
+                        self.update_selection_rectangle()
+                        self.draw_move_indicators((self.canvas.winfo_width() - self.columns * self.size) / 2,
+                                                  (self.canvas.winfo_height() - self.rows * self.size) / 2)
 
     def click_movement(self, new_position):
-        if self.selected_piece:
+        if self.selected_piece and self.current_turn == self.player_color:
             if (new_position[0] < 0 or new_position[0] >= self.columns or
                     new_position[1] < 0 or new_position[1] >= self.rows):
                 new_position = self.selected_position
             if self.move_piece(self.selected_position, new_position, True):
                 self.current_turn = "black" if self.current_turn == "white" else "white"
-                if self.current_turn != self.player_color:
-                    self.after(1000, self.ai_move)
+                # if self.current_turn != self.player_color:
+                #     self.after(1000, self.ai_move)
             self.selected_position = None
             self.calculated_moves = []
             self.update_selection_rectangle()
             self.refresh_board()
 
-
     def on_drag(self, event):
-        if self.drag_data["item"]:
+        if self.drag_data["item"] and self.current_turn == self.player_color:
             delta_x = event.x - self.drag_data["x"]
             delta_y = event.y - self.drag_data["y"]
             self.canvas.move(self.drag_data["item"], delta_x, delta_y)
@@ -291,7 +293,7 @@ class ChessBoard(tk.Frame):
             self.canvas.tag_lower("move_indicator", self.drag_data["item"])
 
     def on_drop(self, event):
-        if self.drag_data["item"]:
+        if self.drag_data["item"] and self.current_turn == self.player_color:
             new_position = self.piece_location(event)
             if self.selected_piece:
                 if (new_position[0] < 0 or new_position[0] >= self.columns or
@@ -299,8 +301,8 @@ class ChessBoard(tk.Frame):
                     new_position = self.selected_position
                 if self.move_piece(self.selected_position, new_position, True):
                     self.current_turn = "black" if self.current_turn == "white" else "white"
-                    if self.current_turn != self.player_color:
-                        self.after(1000, self.ai_move)
+                    # if self.current_turn != self.player_color:
+                    #     self.after(1000, self.ai_move)
                 # self.selected_position = None
                 # self.selected_piece = None
                 # self.calculated_moves = []
@@ -313,7 +315,8 @@ class ChessBoard(tk.Frame):
         if record:
             self.record_move(from_pos, to_pos)
         if from_pos in self.pieces:
-            if to_pos in self.validMoves(self.pieces[from_pos], from_pos, self.Calculate_moves(self.pieces[from_pos], from_pos)):
+            if to_pos in self.validMoves(self.pieces[from_pos], from_pos,
+                                         self.Calculate_moves(self.pieces[from_pos], from_pos)):
                 captured_piece = self.pieces.pop(to_pos, None)  # Capture piece if present
                 piece_to_move = self.pieces.pop(from_pos)  # Remove piece from original position
                 self.pieces[to_pos] = piece_to_move  # Place the piece at the new position
@@ -346,7 +349,6 @@ class ChessBoard(tk.Frame):
             return False
         return False
 
-    
     def ai_move(self):
         if self.current_turn != self.player_color:
             possible_moves = []
@@ -392,9 +394,6 @@ class ChessBoard(tk.Frame):
                 self.refresh_board()
                 self.check_for_checkmate(self.current_turn)
 
-
-            
-
     def evaluate_move(self, from_pos, to_pos):
         score = 0
         print(f"Evaluating move from {from_pos} to {to_pos}")
@@ -438,10 +437,6 @@ class ChessBoard(tk.Frame):
             self.pieces[to_pos] = original_piece
 
         return score
-    
-
-
-
 
     def promote_pawn(self, position):
         promotion_window = tk.Toplevel(self)
@@ -452,7 +447,7 @@ class ChessBoard(tk.Frame):
         label.pack(pady=5)
 
         def promote(piece_type):
-            color = "white" if self.current_turn == "white" else "black"
+            color = "black" if self.current_turn == "white" else "white"
             color = "black" if color == "white" else "white"
             self.pieces[position] = f"{color}_{piece_type}"
             self.refresh_board()
@@ -502,7 +497,7 @@ class ChessBoard(tk.Frame):
     def update_selection_rectangle(self, offset_x=None, offset_y=None):
         if self.selection_rectangle:
             self.canvas.delete(self.selection_rectangle)
-        if self.selected_position:
+        if self.selected_position and self.current_turn == self.player_color:
             if offset_x is None:
                 offset_x = (self.canvas.winfo_width() - self.columns * self.size) / 2
             if offset_y is None:
