@@ -40,25 +40,28 @@ class ChessBoard(tk.Frame):
         self.white_captures_label = tk.Label(self.sidebar, text="White Captures")
         self.white_captures_label.pack(side="bottom")
 
+        self.white_points_label = tk.Label(self.sidebar, text="")
+        self.white_points_label.pack(side="bottom")
+        self.black_points_label = tk.Label(self.sidebar, text="")
+        self.black_points_label.pack(side="top")
+
         self.black_captures_frame = tk.Frame(self.sidebar)
         self.black_captures_frame.pack(pady=(10, 10), side="top")
         self.white_captures_frame = tk.Frame(self.sidebar)
         self.white_captures_frame.pack(pady=(10, 10), side="bottom")
 
-        self.white_points_label = tk.Label(self.sidebar, text="White Points: 0")
-        self.white_points_label.pack(pady=(10, 0), side="top")
-        self.black_points_label = tk.Label(self.sidebar, text="Black Points: 0")
-        self.black_points_label.pack(pady=(10, 0), side="bottom")
-
         self.white_points = 0
         self.black_points = 0
-
-
-        # self.turn_label.pack(pady=(20, 0))
 
         # Initialize captures lists
         self.white_captures = []
         self.black_captures = []
+
+        # Initialize captured piece positions
+        self.white_captures_row = 0
+        self.white_captures_col = 0
+        self.black_captures_row = 0
+        self.black_captures_col = 0
 
         self.canvas.bind("<Configure>", self.refresh_board)
         self.canvas.bind("<ButtonPress-1>", self.on_click)
@@ -129,8 +132,12 @@ class ChessBoard(tk.Frame):
                 self.canvas.create_text(offset_x - self.size / 2, y, text=str(self.rows - row), tags="square")
 
         letters = "abcdefgh"
-        if (self.player_color == "black"):
+        if self.player_color == "black":
             letters = letters[::-1]
+            self.white_captures_frame.pack(pady=(10, 10), side="top")
+            self.black_captures_frame.pack(pady=(10, 10), side="bottom")
+            self.black_points_label.pack(side="bottom")
+            self.white_points_label.pack(side="top")
         for col in range(self.columns):
             if self.player_color == "white":
                 x = offset_x + col * self.size + self.size / 2
@@ -330,7 +337,7 @@ class ChessBoard(tk.Frame):
 
     def capture_piece(self, captured_piece):
         piece_name = captured_piece.split("_")[1]
-        points = {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 99}
+        points = {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 0}
         point_value = points.get(piece_name, 0)
 
         # Resize the image for captured piece
@@ -340,25 +347,41 @@ class ChessBoard(tk.Frame):
 
         if captured_piece.startswith("white"):
             self.black_points += point_value
-            capture_label = tk.Label(self.black_captures_frame, image=capture_image)
-            capture_label.image = capture_image
-            capture_label.pack()
+            self.display_captured_piece(self.black_captures_frame, capture_image, self.black_captures_row, self.black_captures_col)
+            self.black_captures_col += 1
         else:
             self.white_points += point_value
-            capture_label = tk.Label(self.white_captures_frame, image=capture_image)
-            capture_label.image = capture_image
-            capture_label.pack()
+            self.display_captured_piece(self.white_captures_frame, capture_image, self.white_captures_row, self.white_captures_col)
+            self.white_captures_col += 1
 
-        # Update points display only for the leading side
+        # Calculate the difference in score show this in the points label only for the leading side
+
         if self.white_points > self.black_points:
-            self.white_points_label.config(text=f"+{self.white_points - self.black_points}")
-            self.black_points_label.config(text="")
-        elif self.black_points > self.white_points:
-            self.black_points_label.config(text=f"+{self.black_points - self.white_points}")
-            self.white_points_label.config(text="")
+            self.white_points_label.config(text=f"(+{self.white_points - self.black_points})")
+            self.black_points_label.config(text=f"")
+        elif self.black_points == self.white_points:
+            self.white_points_label.config(text=f"")
+            self.black_points_label.config(text=f"")
         else:
-            self.white_points_label.config(text="")
-            self.black_points_label.config(text="")
+            self.black_points_label.config(text=f"(+{self.black_points - self.white_points})")
+            self.white_points_label.config(text=f"")
+        """ # Update points display only for the leading side
+        if self.white_points > self.black_points:
+            self.white_points_label.config(text=f"({self.white_points - self.black_points})")
+            self.black_points_label.config(text=f"Black Points: {self.black_points}")
+        elif self.black_points > self.white_points:
+            self.black_points_label.config(text=f"Black Points: {self.black_points} (+{self.black_points - self.white_points})")
+            self.white_points_label.config(text=f"White Points: {self.white_points}")
+        else:
+            self.white_points_label.config(text=f"White Points: {self.white_points}")
+            self.black_points_label.config(text=f"Black Points: {self.black_points}") """
+
+    def display_captured_piece(self, frame, image, row, col):
+        # add the difference of the score to the label
+        
+        label = tk.Label(frame, image=image)
+        label.image = image  # Keep a reference to the image
+        label.grid(row=row, column=col)
 
     def add_piece(self, piece, position):
         self.pieces[position] = piece
@@ -627,11 +650,15 @@ class ChessBoard(tk.Frame):
         self.calculated_moves = []
         self.white_points = 0
         self.black_points = 0
+        self.white_captures_row = 0
+        self.white_captures_col = 0
+        self.black_captures_row = 0
+        self.black_captures_col = 0
         for widget in self.white_captures_frame.winfo_children():
             widget.destroy()
         for widget in self.black_captures_frame.winfo_children():
             widget.destroy()
-        self.white_points_label.config(text="")
-        self.black_points_label.config(text="")
+        """ self.white_points_label.config(text="White Points: 0")
+        self.black_points_label.config(text="Black Points: 0") """
         self.add_pieces()
         self.refresh_board()
