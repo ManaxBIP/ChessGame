@@ -935,6 +935,7 @@ class ChessBoard(tk.Frame):
     def show_draw_message(self, reason):
         message = f"Égalité due à {reason}!"
         tk.messagebox.showinfo("Jeu Terminé", message)
+        self.record_game(self.moves_of_game, "0.5-0.5")
         self.reset_board()
         self.controller.show_frame("MainMenu")
 
